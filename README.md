@@ -1,14 +1,23 @@
 # OpenCode Status HUD
 
-![Repo](https://img.shields.io/badge/repo-opencode--status--hud-0A66C2)
-![Status](https://img.shields.io/badge/status-planning-blue)
-![Phase 0](https://img.shields.io/badge/phase_0-3_issues-orange)
-![Phase 1](https://img.shields.io/badge/phase_1-4_issues-orange)
-![Phase 2](https://img.shields.io/badge/phase_2-3_issues-orange)
-![Phase 3](https://img.shields.io/badge/phase_3-4_issues-orange)
-![Phase 4](https://img.shields.io/badge/phase_4-2_issues-orange)
+[![Repo](https://img.shields.io/badge/repo-opencode--status--hud-0A66C2)](https://github.com/Two-Weeks-Team/opencode-status-hud)
+[![Open Issues](https://img.shields.io/github/issues/Two-Weeks-Team/opencode-status-hud)](https://github.com/Two-Weeks-Team/opencode-status-hud/issues)
+[![Closed Issues](https://img.shields.io/github/issues-closed/Two-Weeks-Team/opencode-status-hud)](https://github.com/Two-Weeks-Team/opencode-status-hud/issues?q=is%3Aissue+is%3Aclosed)
+[![Open Milestones](https://img.shields.io/github/milestones/open/Two-Weeks-Team/opencode-status-hud)](https://github.com/Two-Weeks-Team/opencode-status-hud/milestones)
+[![Last Commit](https://img.shields.io/github/last-commit/Two-Weeks-Team/opencode-status-hud)](https://github.com/Two-Weeks-Team/opencode-status-hud/commits/master)
+[![Status](https://img.shields.io/badge/status-planning-blue)](https://github.com/Two-Weeks-Team/opencode-status-hud/milestones)
 
 Documentation-first repository for planning and executing a universal OpenCode HUD.
+
+## Quick Links
+
+- Roadmap milestones: `https://github.com/Two-Weeks-Team/opencode-status-hud/milestones`
+- Task issues: `https://github.com/Two-Weeks-Team/opencode-status-hud/issues`
+- Phase 0 board slice: `https://github.com/Two-Weeks-Team/opencode-status-hud/issues?q=is%3Aopen+label%3Aphase%3A0`
+- Phase 1 board slice: `https://github.com/Two-Weeks-Team/opencode-status-hud/issues?q=is%3Aopen+label%3Aphase%3A1`
+- Phase 2 board slice: `https://github.com/Two-Weeks-Team/opencode-status-hud/issues?q=is%3Aopen+label%3Aphase%3A2`
+- Phase 3 board slice: `https://github.com/Two-Weeks-Team/opencode-status-hud/issues?q=is%3Aopen+label%3Aphase%3A3`
+- Phase 4 board slice: `https://github.com/Two-Weeks-Team/opencode-status-hud/issues?q=is%3Aopen+label%3Aphase%3A4`
 
 ## Core Documents
 
@@ -29,6 +38,15 @@ Documentation-first repository for planning and executing a universal OpenCode H
   - Phase 4: `https://github.com/Two-Weeks-Team/opencode-status-hud/milestone/5`
   - Release Alpha: `https://github.com/Two-Weeks-Team/opencode-status-hud/milestone/6`
   - Release Beta: `https://github.com/Two-Weeks-Team/opencode-status-hud/milestone/7`
+
+## Phase Snapshot
+
+- Phase 0: 3 issues (`#1`, `#2`, `#3`)
+- Phase 1: 4 issues (`#4`, `#5`, `#6`, `#7`)
+- Phase 2: 3 issues (`#8`, `#9`, `#10`)
+- Phase 3: 4 issues (`#11`, `#12`, `#13`, `#14`)
+- Phase 4: 2 issues (`#15`, `#16`, conditional)
+- Release: 2 issues (`#17`, `#18`)
 
 ## Next Execution Order
 
