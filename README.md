@@ -1,13 +1,14 @@
 # OpenCode Status HUD
 
 [![Repo](https://img.shields.io/badge/repo-opencode--status--hud-0A66C2)](https://github.com/Two-Weeks-Team/opencode-status-hud)
-[![Open Issues](https://img.shields.io/github/issues/Two-Weeks-Team/opencode-status-hud)](https://github.com/Two-Weeks-Team/opencode-status-hud/issues)
-[![Closed Issues](https://img.shields.io/github/issues-closed/Two-Weeks-Team/opencode-status-hud)](https://github.com/Two-Weeks-Team/opencode-status-hud/issues?q=is%3Aissue+is%3Aclosed)
-[![Open Milestones](https://img.shields.io/github/milestones/open/Two-Weeks-Team/opencode-status-hud)](https://github.com/Two-Weeks-Team/opencode-status-hud/milestones)
-[![Last Commit](https://img.shields.io/github/last-commit/Two-Weeks-Team/opencode-status-hud)](https://github.com/Two-Weeks-Team/opencode-status-hud/commits/master)
+[![Open Issues](https://img.shields.io/badge/issues-18_open-orange)](https://github.com/Two-Weeks-Team/opencode-status-hud/issues)
+[![Open Milestones](https://img.shields.io/badge/milestones-7_open-orange)](https://github.com/Two-Weeks-Team/opencode-status-hud/milestones)
+[![Branch](https://img.shields.io/badge/branch-master-6f42c1)](https://github.com/Two-Weeks-Team/opencode-status-hud/tree/master)
 [![Status](https://img.shields.io/badge/status-planning-blue)](https://github.com/Two-Weeks-Team/opencode-status-hud/milestones)
 
 Documentation-first repository for planning and executing a universal OpenCode HUD.
+
+> Note: This repository is private, so GitHub API-based Shields badges may render `repo not found`. Static badges are used for reliable display.
 
 ## Quick Links
 
