@@ -3,6 +3,8 @@ export const EVENT_ALLOWLIST = {
   supported: ["event"]
 } as const
 
+const ALLOWED_EVENT_SET = new Set<string>([...EVENT_ALLOWLIST.required, ...EVENT_ALLOWLIST.supported])
+
 export type RequiredEventType = (typeof EVENT_ALLOWLIST.required)[number]
 export type SupportedEventType = (typeof EVENT_ALLOWLIST.supported)[number]
 export type AllowedEventType = RequiredEventType | SupportedEventType
@@ -12,7 +14,5 @@ export function isAllowedEventType(value: unknown): value is AllowedEventType {
     return false
   }
 
-  return [...EVENT_ALLOWLIST.required, ...EVENT_ALLOWLIST.supported].includes(
-    value as AllowedEventType
-  )
+  return ALLOWED_EVENT_SET.has(value)
 }

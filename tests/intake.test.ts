@@ -40,7 +40,8 @@ describe("parseIncomingEvent", () => {
 
     for (const value of inputs) {
       expect(() => parseIncomingEvent(value)).not.toThrow()
-      expect(parseIncomingEvent(value).kind).toBe("ignored")
+      const decision = parseIncomingEvent(value)
+      expect(decision.kind).toBe("ignored")
     }
   })
 })

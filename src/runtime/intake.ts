@@ -56,58 +56,62 @@ export function parseIncomingEvent(input: unknown): IntakeDecision {
     return { kind: "ignored", reason: "unknown_event_type" }
   }
 
-  if (type === "tool.execute.before") {
-    const tool = asRecord(record.tool)
-    const toolName = tool ? asString(tool.name) : null
-    if (!toolName) {
-      return { kind: "ignored", reason: "invalid_tool_execute_before_shape" }
-    }
+  switch (type) {
+    case "tool.execute.before": {
+      const tool = asRecord(record.tool)
+      const toolName = tool ? asString(tool.name) : null
+      if (!toolName) {
+        return { kind: "ignored", reason: "invalid_tool_execute_before_shape" }
+      }
 
-    return {
-      kind: "accepted",
-      event: {
-        type,
-        toolName,
-        sessionId: parseSessionId(record),
-        ts: asNumber(record.ts)
+      return {
+        kind: "accepted",
+        event: {
+          type,
+          toolName,
+          sessionId: parseSessionId(record),
+          ts: asNumber(record.ts)
+        }
       }
     }
-  }
 
-  if (type === "tool.execute.after") {
-    const tool = asRecord(record.tool)
-    const toolName = tool ? asString(tool.name) : null
-    if (!toolName) {
-      return { kind: "ignored", reason: "invalid_tool_execute_after_shape" }
-    }
+    case "tool.execute.after": {
+      const tool = asRecord(record.tool)
+      const toolName = tool ? asString(tool.name) : null
+      if (!toolName) {
+        return { kind: "ignored", reason: "invalid_tool_execute_after_shape" }
+      }
 
-    const result = asRecord(record.result)
-    const ok = result && typeof result.ok === "boolean" ? result.ok : null
+      const result = asRecord(record.result)
+      const ok = result && typeof result.ok === "boolean" ? result.ok : null
 
-    return {
-      kind: "accepted",
-      event: {
-        type,
-        toolName,
-        ok,
-        sessionId: parseSessionId(record),
-        ts: asNumber(record.ts)
+      return {
+        kind: "accepted",
+        event: {
+          type,
+          toolName,
+          ok,
+          sessionId: parseSessionId(record),
+          ts: asNumber(record.ts)
+        }
       }
     }
-  }
 
-  const name = asString(record.name)
-  if (!name) {
-    return { kind: "ignored", reason: "invalid_supported_event_shape" }
-  }
+    case "event": {
+      const name = asString(record.name)
+      if (!name) {
+        return { kind: "ignored", reason: "invalid_supported_event_shape" }
+      }
 
-  return {
-    kind: "accepted",
-    event: {
-      type,
-      name,
-      sessionId: parseSessionId(record),
-      ts: asNumber(record.ts)
+      return {
+        kind: "accepted",
+        event: {
+          type,
+          name,
+          sessionId: parseSessionId(record),
+          ts: asNumber(record.ts)
+        }
+      }
     }
   }
 }
