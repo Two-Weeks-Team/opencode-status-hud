@@ -1,3 +1,4 @@
 export { createDefaultConfig } from "./config/index.js"
 export { reduceHudState, createInitialHudState } from "./runtime/reducer.js"
 export { emitToastMessage, emitPromptMessage } from "./runtime/channels/index.js"
+export { parseIncomingEvent } from "./runtime/intake.js"
