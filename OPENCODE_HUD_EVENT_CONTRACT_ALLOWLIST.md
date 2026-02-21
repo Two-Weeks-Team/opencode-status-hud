@@ -89,6 +89,7 @@ Sample output payload shape (draft):
 
 ```json
 {
+  "type": "tui.showToast",
   "title": "HUD",
   "message": "bash completed in 1.2s",
   "variant": "info"
@@ -103,7 +104,17 @@ Sample output payload shape (draft):
 
 ```json
 {
+  "type": "tui.appendPrompt",
   "content": "[HUD] tool=bash status=done duration=1.2s"
+}
+```
+
+Failure-case payload example (should be dropped):
+
+```json
+{
+  "type": "tui.appendPrompt",
+  "content": 42
 }
 ```
 
@@ -120,6 +131,23 @@ Sample output payload shape (draft):
 ### C) Any payload failing schema guards
 - Reason: safety first; avoid runtime throw or noisy fallback
 - Action: drop and optionally emit debug-only telemetry
+
+Failure-case payload examples (drop policy):
+
+```json
+{
+  "type": 123,
+  "tool": { "name": "bash" }
+}
+```
+
+```json
+{
+  "type": "tool.execute.before",
+  "tool": null,
+  "session": { "id": "ses_xxx" }
+}
+```
 
 ## Parser Guard Policy
 
