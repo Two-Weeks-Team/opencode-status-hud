@@ -39,9 +39,10 @@ This document records baseline behavior expectations for HUD output channels.
    - fallback: `tui.appendPrompt` disabled by default
 
 2. Emission controls
-   - transition-only emission
+   - transition-only emission (same wording as vNext: transition-only emit)
    - cooldown window required (target 500-1500ms)
    - dedupe by `(sessionId, eventType, normalizedMessage)`
+   - stale-state guard: if a terminal transition (`done`/`error`) is waiting behind cooldown, flush immediately at cooldown boundary
 
 3. Fallback enablement guard
    - enable prompt fallback only for conservative profile
@@ -53,6 +54,12 @@ This document records baseline behavior expectations for HUD output channels.
 - Must not assume unknown reducer event rendering support.
 - Must not depend on `oh-my-opencode` for baseline visibility.
 - Prompt fallback must not pollute normal coding flow.
+
+## Terminology Alignment
+
+- `transition-only emission` == `transition-only emit` (vNext plan wording)
+- `noise risk` corresponds to `output flood / UX degradation` in `OPENCODE_HUD_UNIVERSAL_PLAN_VNEXT.md`
+- `fallback channel` means `appendPrompt` in conservative profile only
 
 ## Decision for P0-2 DoD
 
