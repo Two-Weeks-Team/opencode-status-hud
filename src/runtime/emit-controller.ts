@@ -1,4 +1,5 @@
 import type { HudState, HudTransition } from "./reducer.js"
+import { safeDisplayValue } from "./formatting.js"
 
 export interface ShowToastPayload {
   title: string
@@ -61,39 +62,46 @@ function isMeaningfulTransition(
 }
 
 function buildTransitionKey(transition: HudTransition): string {
-  return `${transition.type}|${transition.label}|${transition.status}|${transition.durationMs ?? "na"}`
+  return `${transition.type}|${safeDisplayValue(transition.label, 80)}|${transition.status}|${transition.durationMs ?? "na"}`
 }
 
 function formatToastPayload(transition: HudTransition): ShowToastPayload {
+  const safeLabel = safeDisplayValue(transition.label, 80)
+  const maxMessageLength = 140
+
   switch (transition.status) {
     case "running":
       return {
         title: "HUD",
-        message: `${transition.label} started`,
+        message: safeDisplayValue(`${safeLabel} started`, maxMessageLength),
         variant: "info"
       }
     case "error":
       return {
         title: "HUD",
-        message:
+        message: safeDisplayValue(
           transition.durationMs === null
-            ? `${transition.label} failed`
-            : `${transition.label} failed in ${transition.durationMs}ms`,
+            ? `${safeLabel} failed`
+            : `${safeLabel} failed in ${transition.durationMs}ms`,
+          maxMessageLength
+        ),
         variant: "error"
       }
     case "done":
       return {
         title: "HUD",
-        message:
+        message: safeDisplayValue(
           transition.durationMs === null
-            ? `${transition.label} completed`
-            : `${transition.label} completed in ${transition.durationMs}ms`,
+            ? `${safeLabel} completed`
+            : `${safeLabel} completed in ${transition.durationMs}ms`,
+          maxMessageLength
+        ),
         variant: "info"
       }
     case "idle":
       return {
         title: "HUD",
-        message: `${transition.label} updated`,
+        message: safeDisplayValue(`${safeLabel} updated`, maxMessageLength),
         variant: "neutral"
       }
   }
