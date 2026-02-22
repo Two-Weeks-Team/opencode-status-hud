@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest"
 
 import { installHudPluginTransaction } from "../src/cli/install-transaction.js"
 import { uninstallHudPluginTransaction, type UninstallHudPluginOptions } from "../src/cli/uninstall-transaction.js"
+import { expectInstallInstalled, expectUninstallFailed, expectUninstallUninstalled } from "./test-helpers.js"
 
 const tempRoots: string[] = []
 
@@ -31,10 +32,8 @@ describe("uninstallHudPluginTransaction", () => {
     )
 
     const result = await uninstallHudPluginTransaction({ configPath })
-    expect(result.kind).toBe("uninstalled")
-    if (result.kind === "uninstalled") {
-      expect(result.changed).toBe(true)
-    }
+    expectUninstallUninstalled(result)
+    expect(result.changed).toBe(true)
 
     const updated = JSON.parse(await fs.readFile(configPath, "utf8")) as { profile?: string; plugin?: string[] }
     expect(updated.profile).toBe("minimal")
@@ -49,12 +48,10 @@ describe("uninstallHudPluginTransaction", () => {
     const first = await uninstallHudPluginTransaction({ configPath })
     const second = await uninstallHudPluginTransaction({ configPath })
 
-    expect(first.kind).toBe("uninstalled")
-    expect(second.kind).toBe("uninstalled")
-    if (first.kind === "uninstalled" && second.kind === "uninstalled") {
-      expect(first.changed).toBe(true)
-      expect(second.changed).toBe(false)
-    }
+    expectUninstallUninstalled(first)
+    expectUninstallUninstalled(second)
+    expect(first.changed).toBe(true)
+    expect(second.changed).toBe(false)
 
     const updated = JSON.parse(await fs.readFile(configPath, "utf8")) as { plugin?: string[] }
     expect(updated.plugin).toEqual([])
@@ -66,13 +63,11 @@ describe("uninstallHudPluginTransaction", () => {
     await fs.writeFile(configPath, JSON.stringify({ plugin: ["opencode-status-hud"] }, null, 2), "utf8")
 
     const uninstall = await uninstallHudPluginTransaction({ configPath })
-    expect(uninstall.kind).toBe("uninstalled")
+    expectUninstallUninstalled(uninstall)
 
     const reinstall = await installHudPluginTransaction({ configPath })
-    expect(reinstall.kind).toBe("installed")
-    if (reinstall.kind === "installed") {
-      expect(reinstall.changed).toBe(true)
-    }
+    expectInstallInstalled(reinstall)
+    expect(reinstall.changed).toBe(true)
 
     const updated = JSON.parse(await fs.readFile(configPath, "utf8")) as { plugin?: string[] }
     expect(updated.plugin).toEqual(["opencode-status-hud"])
@@ -104,10 +99,8 @@ describe("uninstallHudPluginTransaction", () => {
       fs: fsOverride
     })
 
-    expect(result.kind).toBe("failed")
-    if (result.kind === "failed") {
-      expect(result.reason).toBe("write_failed")
-    }
+    expectUninstallFailed(result)
+    expect(result.reason).toBe("write_failed")
 
     const restored = JSON.parse(await fs.readFile(configPath, "utf8")) as { plugin?: string[] }
     expect(restored.plugin).toEqual(["from-backup"])
@@ -123,9 +116,7 @@ describe("uninstallHudPluginTransaction", () => {
       backupPath: configPath
     })
 
-    expect(result.kind).toBe("failed")
-    if (result.kind === "failed") {
-      expect(result.reason).toBe("invalid_config")
-    }
+    expectUninstallFailed(result)
+    expect(result.reason).toBe("invalid_config")
   })
 })

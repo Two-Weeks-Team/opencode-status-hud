@@ -1,6 +1,6 @@
 # Installer Lifecycle Troubleshooting
 
-Issue link: `#14 (P3-4)`
+Issue link: [#14](https://github.com/Two-Weeks-Team/opencode-status-hud/issues/14) (P3-4)
 
 ## Lifecycle Validation Commands
 
@@ -27,12 +27,16 @@ npx vitest run tests/installer-lifecycle.test.ts tests/install-transaction.test.
 
 ## Operator Recovery Steps
 
-1. Identify active config path (`OPENCODE_CONFIG`, project config file, or global config path).
-2. Validate whether `<config>.bak` exists.
-3. If config file is corrupted, restore from backup:
+1. Identify active config path (`OPENCODE_CONFIG`, `opencode.jsonc` / `opencode.json`, or global config path).
+2. Validate whether a matching backup exists (`opencode.jsonc.bak` or `opencode.json.bak`).
+3. If `opencode.jsonc` or `opencode.json` is corrupted, restore from backup:
 
 ```bash
-cp "<config>.bak" "<config>"
+# For a JSON config file:
+cp "opencode.json.bak" "opencode.json"
+
+# For a JSONC config file:
+cp "opencode.jsonc.bak" "opencode.jsonc"
 ```
 
 4. Re-run installer transaction and confirm plugin entry appears once.
@@ -47,5 +51,5 @@ cp "<config>.bak" "<config>"
 ## Safety Notes
 
 - Keep backup path distinct from config path.
-- Keep rollback backups (`*.bak`) until install/uninstall validation is complete.
+- Keep rollback backups (`opencode.json.bak` / `opencode.jsonc.bak`) until install/uninstall validation is complete.
 - Use transaction APIs that write to temporary file first, then atomic rename.

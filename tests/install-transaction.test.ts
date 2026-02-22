@@ -5,6 +5,7 @@ import path from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 
 import { installHudPluginTransaction, type InstallTransactionFs } from "../src/cli/install-transaction.js"
+import { expectInstallFailed, expectInstallInstalled } from "./test-helpers.js"
 
 const tempRoots: string[] = []
 
@@ -29,13 +30,10 @@ describe("installHudPluginTransaction", () => {
     const first = await installHudPluginTransaction({ configPath })
     const second = await installHudPluginTransaction({ configPath })
 
-    expect(first.kind).toBe("installed")
-    expect(second.kind).toBe("installed")
-
-    if (first.kind === "installed" && second.kind === "installed") {
-      expect(first.changed).toBe(true)
-      expect(second.changed).toBe(false)
-    }
+    expectInstallInstalled(first)
+    expectInstallInstalled(second)
+    expect(first.changed).toBe(true)
+    expect(second.changed).toBe(false)
 
     const installed = JSON.parse(await fs.readFile(configPath, "utf8")) as { plugin?: string[] }
     expect(installed.plugin).toEqual(["other-plugin", "opencode-status-hud"])
@@ -81,10 +79,8 @@ describe("installHudPluginTransaction", () => {
       fs: failingRenameFs
     })
 
-    expect(result.kind).toBe("failed")
-    if (result.kind === "failed") {
-      expect(result.reason).toBe("write_failed")
-    }
+    expectInstallFailed(result)
+    expect(result.reason).toBe("write_failed")
 
     const current = JSON.parse(await fs.readFile(configPath, "utf8")) as { plugin?: string[] }
     expect(current.plugin).toEqual(["existing"])
@@ -101,7 +97,7 @@ describe("installHudPluginTransaction", () => {
     )
 
     const result = await installHudPluginTransaction({ configPath })
-    expect(result.kind).toBe("installed")
+    expectInstallInstalled(result)
 
     const updated = await fs.readFile(configPath, "utf8")
     expect(updated.includes("// keep me")).toBe(true)
@@ -137,10 +133,8 @@ describe("installHudPluginTransaction", () => {
       fs: removeThenFailFs
     })
 
-    expect(result.kind).toBe("failed")
-    if (result.kind === "failed") {
-      expect(result.reason).toBe("write_failed")
-    }
+    expectInstallFailed(result)
+    expect(result.reason).toBe("write_failed")
 
     const restored = JSON.parse(await fs.readFile(configPath, "utf8")) as { plugin?: string[] }
     expect(restored.plugin).toEqual(["from-backup"])
