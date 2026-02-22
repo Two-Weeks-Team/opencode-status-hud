@@ -15,5 +15,8 @@
     "@types/node": "22.13.10",
     "typescript": "5.8.2",
     "vitest": "3.0.9"
+  },
+  "dependencies": {
+    "jsonc-parser": "^3.3.1"
   }
 }
