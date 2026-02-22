@@ -10,6 +10,35 @@ Documentation-first repository for planning and executing a universal OpenCode H
 
 > Note: This repository is private, so GitHub API-based Shields badges may render `repo not found`. Static badges are used for reliable display.
 
+## Installation
+
+### For Humans
+
+Read and follow the installation guide:
+
+- `docs/guide/installation.md`
+
+Or run directly after install:
+
+```bash
+npm install -g opencode-status-hud
+opencode-status-hud install
+```
+
+### For LLM
+
+Provide this to your agent:
+
+```text
+Install and configure opencode-status-hud by following:
+https://raw.githubusercontent.com/Two-Weeks-Team/opencode-status-hud/refs/heads/master/docs/guide/installation.md
+```
+
+## Release
+
+- Maintainers can publish via GitHub Actions: `.github/workflows/publish.yml`
+- Required secret: `NPM_TOKEN`
+
 ## Quick Links
 
 - Roadmap milestones: `https://github.com/Two-Weeks-Team/opencode-status-hud/milestones`

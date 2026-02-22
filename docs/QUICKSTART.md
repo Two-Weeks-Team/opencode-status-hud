@@ -9,6 +9,15 @@
 
 ```bash
 npm install
+npm run build
+```
+
+## CLI Install/Uninstall
+
+```bash
+node ./bin/opencode-status-hud.js install
+node ./bin/opencode-status-hud.js resolve-config
+node ./bin/opencode-status-hud.js uninstall
 ```
 
 ## Validation Commands
@@ -28,6 +37,7 @@ npm run ci
 ## Installer Safety
 
 - Installer/uninstaller recovery guide: `docs/INSTALLER_TROUBLESHOOTING.md`
+- Human/LLM install flow: `docs/guide/installation.md`
 
 ## Minimal Usage Example
 
