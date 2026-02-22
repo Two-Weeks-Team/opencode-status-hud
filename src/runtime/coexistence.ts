@@ -33,6 +33,24 @@ const DEFAULT_COEXISTENCE_CONFIG: CoexistenceConfig = {
   promptProfile: "minimal"
 }
 
+const TOAST_TUNING_BY_VERBOSITY: Record<
+  HudVerbosity,
+  { cooldownMs: number; maxEmitsPerWindow: number; windowMs: number }
+> = {
+  low: { cooldownMs: 1000, maxEmitsPerWindow: 2, windowMs: 1000 },
+  normal: { cooldownMs: 500, maxEmitsPerWindow: 3, windowMs: 1000 },
+  high: { cooldownMs: 0, maxEmitsPerWindow: 5, windowMs: 1000 }
+}
+
+const PROMPT_TUNING_BY_VERBOSITY: Record<
+  HudVerbosity,
+  { cooldownMs: number; maxEmitsPerWindow: number; windowMs: number }
+> = {
+  low: { cooldownMs: 2000, maxEmitsPerWindow: 2, windowMs: 1000 },
+  normal: { cooldownMs: 1000, maxEmitsPerWindow: 3, windowMs: 1000 },
+  high: { cooldownMs: 500, maxEmitsPerWindow: 4, windowMs: 1000 }
+}
+
 export function createInitialCoexistenceState(nowMs = 0): CoexistenceRuntimeState {
   return {
     toastState: createInitialEmitControllerState(nowMs),
@@ -41,24 +59,14 @@ export function createInitialCoexistenceState(nowMs = 0): CoexistenceRuntimeStat
 }
 
 function resolveToastTuning(verbosity: HudVerbosity) {
-  switch (verbosity) {
-    case "high":
-      return { cooldownMs: 0, maxEmitsPerWindow: 5, windowMs: 1000 }
-    case "normal":
-      return { cooldownMs: 500, maxEmitsPerWindow: 3, windowMs: 1000 }
-    case "low":
-      return { cooldownMs: 1000, maxEmitsPerWindow: 2, windowMs: 1000 }
-  }
+  return TOAST_TUNING_BY_VERBOSITY[verbosity] ?? TOAST_TUNING_BY_VERBOSITY.low
 }
 
 function resolvePromptTuning(verbosity: HudVerbosity, promptProfile: HudProfile) {
-  switch (verbosity) {
-    case "high":
-      return { profile: promptProfile, cooldownMs: 500, maxEmitsPerWindow: 4, windowMs: 1000 }
-    case "normal":
-      return { profile: promptProfile, cooldownMs: 1000, maxEmitsPerWindow: 3, windowMs: 1000 }
-    case "low":
-      return { profile: promptProfile, cooldownMs: 2000, maxEmitsPerWindow: 2, windowMs: 1000 }
+  const base = PROMPT_TUNING_BY_VERBOSITY[verbosity] ?? PROMPT_TUNING_BY_VERBOSITY.low
+  return {
+    profile: promptProfile,
+    ...base
   }
 }
 
