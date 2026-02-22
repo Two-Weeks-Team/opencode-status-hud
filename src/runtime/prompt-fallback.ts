@@ -1,5 +1,6 @@
 import type { HudProfile } from "../config/index.js"
 import type { HudState, HudTransition } from "./reducer.js"
+import { safeDisplayValue, truncateDisplayText } from "./formatting.js"
 
 export interface AppendPromptPayload {
   content: string
@@ -76,38 +77,14 @@ function supportsStatus(profile: HudProfile, status: HudTransition["status"]): b
 }
 
 function buildTransitionKey(transition: HudTransition): string {
-  return `${transition.type}|${sanitizeTransitionLabel(transition.label)}|${transition.status}|${transition.durationMs ?? "na"}`
-}
-
-function trimToLength(content: string, maxPromptLength: number): string {
-  if (maxPromptLength <= 0) {
-    return ""
-  }
-
-  if (maxPromptLength <= 3) {
-    return ".".repeat(maxPromptLength)
-  }
-
-  if (content.length <= maxPromptLength) {
-    return content
-  }
-
-  return `${content.slice(0, Math.max(0, maxPromptLength - 3))}...`
-}
-
-function sanitizeTransitionLabel(label: string): string {
-  return label
-    .replace(/[\r\n\t]+/g, " ")
-    .replace(/[<>`$]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
+  return `${transition.type}|${safeDisplayValue(transition.label, 80)}|${transition.status}|${transition.durationMs ?? "na"}`
 }
 
 function formatPromptContent(transition: HudTransition, maxPromptLength: number): string {
-  const safeLabel = sanitizeTransitionLabel(transition.label)
+  const safeLabel = safeDisplayValue(transition.label, 80)
   const duration = transition.durationMs === null ? "" : ` duration=${transition.durationMs}ms`
   const base = `[HUD] ${safeLabel} status=${transition.status}${duration}`
-  return trimToLength(base, maxPromptLength)
+  return truncateDisplayText(base, maxPromptLength)
 }
 
 function normalizeWindow(
