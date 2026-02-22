@@ -19,13 +19,8 @@ async function createTempDir(prefix: string): Promise<string> {
 }
 
 afterEach(async () => {
-  while (tempRoots.length > 0) {
-    const dir = tempRoots.pop()
-    if (!dir) {
-      continue
-    }
-    await rm(dir, { recursive: true, force: true })
-  }
+  await Promise.allSettled(tempRoots.map((dir) => rm(dir, { recursive: true, force: true })))
+  tempRoots.length = 0
 })
 
 describe("resolveConfigPath", () => {

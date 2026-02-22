@@ -168,15 +168,7 @@ function parseJsonByExtension(content: string, filePath: string):
     const errors: ParseError[] = []
     const value = parseJsonc(content, errors)
     if (errors.length > 0) {
-      const first = errors[0]
-      if (!first) {
-        return {
-          kind: "invalid",
-          reason: "invalid_jsonc",
-          message: "Invalid JSONC syntax in config file."
-        }
-      }
-
+      const first = errors[0]!
       return {
         kind: "invalid",
         reason: "invalid_jsonc",
