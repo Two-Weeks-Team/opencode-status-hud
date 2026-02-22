@@ -25,6 +25,10 @@ npm run ci
 - Baseline runtime is plugin-local and does not require `oh-my-opencode`.
 - Default output posture is low-noise (`toast-only`, conservative prompt fallback).
 
+## Installer Safety
+
+- Installer/uninstaller recovery guide: `docs/INSTALLER_TROUBLESHOOTING.md`
+
 ## Minimal Usage Example
 
 ```ts
