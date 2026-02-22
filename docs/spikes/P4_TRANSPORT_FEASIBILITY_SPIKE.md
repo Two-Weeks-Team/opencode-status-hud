@@ -31,9 +31,9 @@ Verify an officially supportable external publishing path for optional HUD viewe
 {
   "version": 1,
   "sessionId": "string | null",
-  "status": "idle | running | done | failed",
+  "status": "idle | running | done | error",
   "toolName": "string | null",
-  "updatedAt": "number | null",
+  "updatedAt": "string | null",
   "message": "string | null"
 }
 ```
