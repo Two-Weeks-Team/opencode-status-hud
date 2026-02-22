@@ -1,4 +1,5 @@
 import { access, constants, copyFile, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
+import { randomBytes } from "node:crypto"
 import path from "node:path"
 
 import { applyEdits, modify } from "jsonc-parser"
@@ -85,6 +86,16 @@ export async function uninstallHudPluginTransaction(
   const pluginSpecifier = options.pluginSpecifier ?? DEFAULT_PLUGIN_SPECIFIER
   const backupPath = options.backupPath ?? defaultBackupPath(options.configPath)
 
+  if (backupPath === options.configPath) {
+    return {
+      kind: "failed",
+      path: options.configPath,
+      reason: "invalid_config",
+      message: "The configuration file path and backup path cannot be the same.",
+      backupPath: null
+    }
+  }
+
   await fsImpl.mkdir(path.dirname(options.configPath), { recursive: true })
 
   const configExists = await exists(options.configPath, fsImpl)
@@ -136,7 +147,7 @@ export async function uninstallHudPluginTransaction(
     plugin: nextPlugins
   }
 
-  const tempPath = `${options.configPath}.tmp.${process.pid}.${Date.now()}`
+  const tempPath = `${options.configPath}.tmp.${randomBytes(6).toString("hex")}`
   const nextContent = buildNextContent(options.configPath, originalContent, nextConfig)
 
   try {

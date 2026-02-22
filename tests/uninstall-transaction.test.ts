@@ -112,4 +112,20 @@ describe("uninstallHudPluginTransaction", () => {
     const restored = JSON.parse(await fs.readFile(configPath, "utf8")) as { plugin?: string[] }
     expect(restored.plugin).toEqual(["from-backup"])
   })
+
+  it("fails safely when backup path equals config path", async () => {
+    const root = await createTempDir("hud-uninstall-transaction-")
+    const configPath = path.join(root, "opencode.json")
+    await fs.writeFile(configPath, JSON.stringify({ plugin: ["opencode-status-hud"] }, null, 2), "utf8")
+
+    const result = await uninstallHudPluginTransaction({
+      configPath,
+      backupPath: configPath
+    })
+
+    expect(result.kind).toBe("failed")
+    if (result.kind === "failed") {
+      expect(result.reason).toBe("invalid_config")
+    }
+  })
 })
