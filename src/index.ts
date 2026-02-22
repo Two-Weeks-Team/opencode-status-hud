@@ -4,6 +4,7 @@ export {
   validateConfigSchemaCompatibility,
   readAndValidateConfigSchema
 } from "./cli/config-manager.js"
+export { runCli } from "./cli/index.js"
 export { installHudPluginTransaction } from "./cli/install-transaction.js"
 export { uninstallHudPluginTransaction } from "./cli/uninstall-transaction.js"
 export { reduceHudState, createInitialHudState } from "./runtime/reducer.js"
