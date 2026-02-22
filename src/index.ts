@@ -4,6 +4,7 @@ export {
   validateConfigSchemaCompatibility,
   readAndValidateConfigSchema
 } from "./cli/config-manager.js"
+export { installHudPluginTransaction } from "./cli/install-transaction.js"
 export { reduceHudState, createInitialHudState } from "./runtime/reducer.js"
 export { emitToastMessage, emitPromptMessage } from "./runtime/channels/index.js"
 export { parseIncomingEvent } from "./runtime/intake.js"
