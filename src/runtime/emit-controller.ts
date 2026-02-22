@@ -55,12 +55,13 @@ function isMeaningfulTransition(
   return (
     previousTransition.type !== nextTransition.type ||
     previousTransition.label !== nextTransition.label ||
-    previousTransition.status !== nextTransition.status
+    previousTransition.status !== nextTransition.status ||
+    previousTransition.durationMs !== nextTransition.durationMs
   )
 }
 
 function buildTransitionKey(transition: HudTransition): string {
-  return `${transition.type}|${transition.label}|${transition.status}`
+  return `${transition.type}|${transition.label}|${transition.status}|${transition.durationMs ?? "na"}`
 }
 
 function formatToastPayload(transition: HudTransition): ShowToastPayload {
