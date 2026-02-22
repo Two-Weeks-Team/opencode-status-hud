@@ -11,6 +11,13 @@ import {
   type AppendPromptClient,
   type PromptFallbackState
 } from "./prompt-fallback.js"
+import {
+  createInitialPublisherState,
+  dispatchOptionalPublisher,
+  type HudPublisherClient,
+  type HudPublisherConfig,
+  type HudPublisherState
+} from "./publisher.js"
 import type { HudState } from "./reducer.js"
 
 export type HudChannelMode = "toast-only" | "prompt-only" | "both"
@@ -25,6 +32,7 @@ export interface CoexistenceConfig {
 export interface CoexistenceRuntimeState {
   toastState: EmitControllerState
   promptState: PromptFallbackState
+  publisherState: HudPublisherState
 }
 
 const DEFAULT_COEXISTENCE_CONFIG: CoexistenceConfig = {
@@ -54,7 +62,8 @@ const PROMPT_TUNING_BY_VERBOSITY: Record<
 export function createInitialCoexistenceState(nowMs = 0): CoexistenceRuntimeState {
   return {
     toastState: createInitialEmitControllerState(nowMs),
-    promptState: createInitialPromptFallbackState(nowMs)
+    promptState: createInitialPromptFallbackState(nowMs),
+    publisherState: createInitialPublisherState(nowMs)
   }
 }
 
@@ -77,10 +86,12 @@ export async function dispatchHudTransition(params: {
   nowMs: number
   toastClient?: ShowToastClient
   promptClient?: AppendPromptClient
+  publisherClient?: HudPublisherClient
+  publisherConfig?: Partial<HudPublisherConfig>
   config?: Partial<CoexistenceConfig>
 }): Promise<{
   coexistenceState: CoexistenceRuntimeState
-  emitted: { toast: boolean; prompt: boolean }
+  emitted: { toast: boolean; prompt: boolean; publisher: boolean }
 }> {
   const config: CoexistenceConfig = {
     ...DEFAULT_COEXISTENCE_CONFIG,
@@ -90,6 +101,7 @@ export async function dispatchHudTransition(params: {
   let nextRuntimeState = params.coexistenceState
   let toastEmitted = false
   let promptEmitted = false
+  let publisherEmitted = false
 
   const allowToast = config.channelMode === "toast-only" || config.channelMode === "both"
   const allowPrompt = config.channelMode === "prompt-only" || config.channelMode === "both"
@@ -128,11 +140,28 @@ export async function dispatchHudTransition(params: {
     promptEmitted = promptResult.emitted
   }
 
+  const publisherParams: Parameters<typeof dispatchOptionalPublisher>[0] = {
+    previousState: params.previousState,
+    nextState: params.nextState,
+    publisherState: nextRuntimeState.publisherState,
+    nowMs: params.nowMs,
+    publisherClient: params.publisherClient,
+    config: params.publisherConfig
+  }
+
+  const publisherResult = await dispatchOptionalPublisher(publisherParams)
+  nextRuntimeState = {
+    ...nextRuntimeState,
+    publisherState: publisherResult.publisherState
+  }
+  publisherEmitted = publisherResult.emitted
+
   return {
     coexistenceState: nextRuntimeState,
     emitted: {
       toast: toastEmitted,
-      prompt: promptEmitted
+      prompt: promptEmitted,
+      publisher: publisherEmitted
     }
   }
 }
