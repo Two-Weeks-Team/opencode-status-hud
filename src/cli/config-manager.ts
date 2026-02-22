@@ -161,7 +161,7 @@ export function validateConfigSchemaCompatibility(input: unknown): ValidateConfi
   }
 }
 
-function parseJsonByExtension(content: string, filePath: string):
+export function parseConfigByExtension(content: string, filePath: string):
   | { kind: "parsed"; value: unknown }
   | { kind: "invalid"; reason: string; message: string } {
   if (filePath.endsWith(".jsonc")) {
@@ -203,7 +203,7 @@ export async function readAndValidateConfigSchema(filePath: string): Promise<Rea
     }
   }
 
-  const parsed = parseJsonByExtension(content, filePath)
+  const parsed = parseConfigByExtension(content, filePath)
   if (parsed.kind === "invalid") {
     return {
       kind: "invalid",

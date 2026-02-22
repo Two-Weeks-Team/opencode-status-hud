@@ -1,9 +1,13 @@
 import { access, constants, copyFile, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 
-import { parse as parseJsonc, printParseErrorCode, type ParseError } from "jsonc-parser"
+import { applyEdits, modify } from "jsonc-parser"
 
-import { validateConfigSchemaCompatibility, type OpenCodeConfigShape } from "./config-manager.js"
+import {
+  parseConfigByExtension,
+  validateConfigSchemaCompatibility,
+  type OpenCodeConfigShape
+} from "./config-manager.js"
 
 export interface InstallTransactionFs {
   access: (filePath: string, mode?: number) => Promise<void>
@@ -63,38 +67,24 @@ async function exists(filePath: string, fsImpl: InstallTransactionFs): Promise<b
   }
 }
 
-function parseConfigContent(content: string, filePath: string): { kind: "valid"; value: unknown } | {
-  kind: "invalid"
-  message: string
-} {
-  if (filePath.endsWith(".jsonc")) {
-    const errors: ParseError[] = []
-    const value = parseJsonc(content, errors)
-    if (errors.length > 0) {
-      const first = errors[0]!
-      return {
-        kind: "invalid",
-        message: `Invalid JSONC syntax: ${printParseErrorCode(first.error)} at offset ${first.offset}.`
+function buildNextContent(filePath: string, originalContent: string | null, nextConfig: OpenCodeConfigShape): string {
+  if (filePath.endsWith(".jsonc") && originalContent !== null) {
+    const edits = modify(
+      originalContent,
+      ["plugin"],
+      nextConfig.plugin,
+      {
+        formattingOptions: {
+          insertSpaces: true,
+          tabSize: 2,
+          eol: "\n"
+        }
       }
-    }
-
-    return {
-      kind: "valid",
-      value
-    }
+    )
+    return applyEdits(originalContent, edits)
   }
 
-  try {
-    return {
-      kind: "valid",
-      value: JSON.parse(content) as unknown
-    }
-  } catch {
-    return {
-      kind: "invalid",
-      message: "Invalid JSON syntax in config file."
-    }
-  }
+  return `${JSON.stringify(nextConfig, null, 2)}\n`
 }
 
 export async function installHudPluginTransaction(options: InstallHudPluginOptions): Promise<InstallHudPluginResult> {
@@ -114,7 +104,7 @@ export async function installHudPluginTransaction(options: InstallHudPluginOptio
 
   let baseConfig: OpenCodeConfigShape = {}
   if (originalContent !== null) {
-    const parsed = parseConfigContent(originalContent, options.configPath)
+    const parsed = parseConfigByExtension(originalContent, options.configPath)
     if (parsed.kind === "invalid") {
       return {
         kind: "failed",
@@ -149,7 +139,7 @@ export async function installHudPluginTransaction(options: InstallHudPluginOptio
   }
 
   const tempPath = `${options.configPath}.tmp.${process.pid}.${Date.now()}`
-  const nextContent = `${JSON.stringify(nextConfig, null, 2)}\n`
+  const nextContent = buildNextContent(options.configPath, originalContent, nextConfig)
 
   try {
     await fsImpl.writeFile(tempPath, nextContent, "utf8")
@@ -157,9 +147,19 @@ export async function installHudPluginTransaction(options: InstallHudPluginOptio
   } catch {
     await fsImpl.rm(tempPath, { force: true }).catch(() => undefined)
 
-    if (configExists && !backupExists) {
+    if (configExists) {
       const currentExists = await exists(options.configPath, fsImpl)
       if (!currentExists) {
+        if (!backupExists) {
+          return {
+            kind: "failed",
+            path: options.configPath,
+            reason: "rollback_failed",
+            message: "Install failed and backup rollback could not restore original config.",
+            backupPath: null
+          }
+        }
+
         try {
           await fsImpl.copyFile(backupPath, options.configPath)
         } catch {
