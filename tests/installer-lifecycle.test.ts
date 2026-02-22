@@ -4,8 +4,9 @@ import path from "node:path"
 
 import { afterEach, describe, expect, it } from "vitest"
 
-import { installHudPluginTransaction, type InstallHudPluginResult } from "../src/cli/install-transaction.js"
+import { installHudPluginTransaction } from "../src/cli/install-transaction.js"
 import { uninstallHudPluginTransaction } from "../src/cli/uninstall-transaction.js"
+import { expectInstallFailed, expectInstallInstalled } from "./test-helpers.js"
 
 const tempRoots: string[] = []
 
@@ -20,27 +21,19 @@ afterEach(async () => {
   tempRoots.length = 0
 })
 
-function expectInstalled(result: InstallHudPluginResult): asserts result is Extract<InstallHudPluginResult, { kind: "installed" }> {
-  expect(result.kind).toBe("installed")
-}
-
-function expectFailed(result: InstallHudPluginResult): asserts result is Extract<InstallHudPluginResult, { kind: "failed" }> {
-  expect(result.kind).toBe("failed")
-}
-
 describe("installer lifecycle regression", () => {
   it("passes clean install then reinstall with stable config output", async () => {
     const root = await createTempDir("hud-lifecycle-")
     const configPath = path.join(root, "opencode.json")
 
     const firstInstall = await installHudPluginTransaction({ configPath })
-    expectInstalled(firstInstall)
+    expectInstallInstalled(firstInstall)
     expect(firstInstall.changed).toBe(true)
 
     const afterFirst = await fs.readFile(configPath, "utf8")
 
     const secondInstall = await installHudPluginTransaction({ configPath })
-    expectInstalled(secondInstall)
+    expectInstallInstalled(secondInstall)
     expect(secondInstall.changed).toBe(false)
 
     const afterSecond = await fs.readFile(configPath, "utf8")
@@ -82,7 +75,7 @@ describe("installer lifecycle regression", () => {
     await fs.writeFile(configPath, "{\n  \"plugin\": [\n", "utf8")
 
     const failedInstall = await installHudPluginTransaction({ configPath, backupPath })
-    expectFailed(failedInstall)
+    expectInstallFailed(failedInstall)
     expect(failedInstall.reason).toBe("invalid_config")
 
     const corruptedStillThere = await fs.readFile(configPath, "utf8")
@@ -91,7 +84,7 @@ describe("installer lifecycle regression", () => {
     await fs.copyFile(backupPath, configPath)
 
     const recoveredInstall = await installHudPluginTransaction({ configPath, backupPath })
-    expectInstalled(recoveredInstall)
+    expectInstallInstalled(recoveredInstall)
     expect(recoveredInstall.changed).toBe(true)
 
     const recovered = JSON.parse(await fs.readFile(configPath, "utf8")) as { plugin?: string[] }

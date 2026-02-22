@@ -32,10 +32,12 @@ npx vitest run tests/installer-lifecycle.test.ts tests/install-transaction.test.
 3. If `opencode.jsonc` or `opencode.json` is corrupted, restore from backup:
 
 ```bash
+# For a JSON config file:
 cp "opencode.json.bak" "opencode.json"
-```
 
-If your active config file is JSONC, restore `opencode.jsonc.bak` to `opencode.jsonc` instead.
+# For a JSONC config file:
+cp "opencode.jsonc.bak" "opencode.jsonc"
+```
 
 4. Re-run installer transaction and confirm plugin entry appears once.
 5. Re-run `npm run ci` to confirm lifecycle checks stay green.
