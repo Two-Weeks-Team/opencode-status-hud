@@ -24,3 +24,48 @@ npm run ci
 
 - Baseline runtime is plugin-local and does not require `oh-my-opencode`.
 - Default output posture is low-noise (`toast-only`, conservative prompt fallback).
+
+## Minimal Usage Example
+
+```ts
+import {
+  createInitialHudState,
+  createInitialEmitControllerState,
+  parseIncomingEvent,
+  reduceHudState,
+  emitToastOnStateTransition
+} from "./src/index.js"
+
+let state = createInitialHudState()
+let emitState = createInitialEmitControllerState(0)
+
+const parsed = parseIncomingEvent({
+  type: "tool.execute.before",
+  tool: { name: "bash" },
+  ts: 1000
+})
+
+if (parsed.kind === "accepted" && parsed.event.type === "tool.execute.before") {
+  const next = reduceHudState(state, {
+    type: "tool.execute.before",
+    toolName: parsed.event.toolName,
+    ts: parsed.event.ts
+  })
+
+  await emitToastOnStateTransition({
+    previousState: state,
+    nextState: next,
+    controllerState: emitState,
+    nowMs: 1000,
+    client: {
+      tui: {
+        showToast: (payload) => {
+          console.log(payload)
+        }
+      }
+    }
+  })
+
+  state = next
+}
+```
