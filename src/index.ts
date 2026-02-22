@@ -1,5 +1,6 @@
-export { createDefaultConfig } from "./config/index.js"
+export { createDefaultConfig, HUD_PROFILES, isHudProfile } from "./config/index.js"
 export { reduceHudState, createInitialHudState } from "./runtime/reducer.js"
 export { emitToastMessage, emitPromptMessage } from "./runtime/channels/index.js"
 export { parseIncomingEvent } from "./runtime/intake.js"
 export { emitToastOnStateTransition, createInitialEmitControllerState } from "./runtime/emit-controller.js"
+export { emitPromptOnStateTransition, createInitialPromptFallbackState } from "./runtime/prompt-fallback.js"
