@@ -144,13 +144,9 @@ export async function dispatchHudTransition(params: {
     previousState: params.previousState,
     nextState: params.nextState,
     publisherState: nextRuntimeState.publisherState,
-    nowMs: params.nowMs
-  }
-  if (params.publisherClient) {
-    publisherParams.publisherClient = params.publisherClient
-  }
-  if (params.publisherConfig) {
-    publisherParams.config = params.publisherConfig
+    nowMs: params.nowMs,
+    publisherClient: params.publisherClient,
+    config: params.publisherConfig
   }
 
   const publisherResult = await dispatchOptionalPublisher(publisherParams)

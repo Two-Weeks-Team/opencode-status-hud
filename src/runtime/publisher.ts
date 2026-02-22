@@ -97,8 +97,8 @@ export async function dispatchOptionalPublisher(params: {
   nextState: HudState
   publisherState: HudPublisherState
   nowMs: number
-  publisherClient?: HudPublisherClient
-  config?: Partial<HudPublisherConfig>
+  publisherClient?: HudPublisherClient | undefined
+  config?: Partial<HudPublisherConfig> | undefined
 }): Promise<{ publisherState: HudPublisherState; emitted: boolean; reason?: string }> {
   const config: HudPublisherConfig = {
     ...DEFAULT_PUBLISHER_CONFIG,
