@@ -317,4 +317,44 @@ describe("buildErrorSnapshot", () => {
     expect(snapshot.error).toBe("Rate limit exceeded")
     expect(snapshot.extraUsage).toBeUndefined()
   })
+
+  it("buildErrorSnapshot with explicit provider 'openai' sets provider to openai", () => {
+    const now = Date.now()
+    const snapshot = buildErrorSnapshot({
+      provider: "openai",
+      status: 403,
+      message: "API key invalid",
+      fetchedAtMs: now
+    })
+
+    expect(snapshot.provider).toBe("openai")
+    expect(snapshot.fetchedAtMs).toBe(now)
+    expect(snapshot.windows).toEqual([])
+    expect(snapshot.error).toBe("API key invalid")
+  })
+
+  it("buildErrorSnapshot without provider defaults to anthropic (backward compat)", () => {
+    const now = Date.now()
+    const snapshot = buildErrorSnapshot({
+      status: 500,
+      message: "Server error",
+      fetchedAtMs: now
+    })
+
+    expect(snapshot.provider).toBe("anthropic")
+    expect(snapshot.fetchedAtMs).toBe(now)
+    expect(snapshot.windows).toEqual([])
+    expect(snapshot.error).toBe("Server error")
+  })
+
+  it("buildErrorSnapshot with explicit provider 'anthropic' sets provider to anthropic", () => {
+    const now = Date.now()
+    const snapshot = buildErrorSnapshot({
+      provider: "anthropic",
+      status: 429,
+      fetchedAtMs: now
+    })
+
+    expect(snapshot.provider).toBe("anthropic")
+  })
 })

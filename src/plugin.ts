@@ -5,10 +5,13 @@ import { resolveMessageCost, type TokenBreakdown } from "./cost-calculator.js"
 import { createUsageAggregator, type UsageAggregator, type AggregatorClient } from "./usage-aggregator.js"
 import { createDiskCache, type DiskCache, type DiskCacheData } from "./disk-cache.js"
 
-import type { ProviderUsageSnapshot } from "./provider-usage.types.js"
+import type { ProviderUsageSnapshot, ProviderKey } from "./provider-usage.types.js"
 import { resolveAuthToken } from "./auth-resolver.js"
 import { fetchClaudeUsage } from "./fetch-claude.js"
 import { createPollingManager, type PollingManager } from "./polling-manager.js"
+import { resolveOpenAIAuthToken } from "./auth-resolver-openai.js"
+import { fetchOpenAIUsage } from "./fetch-openai.js"
+import type { ResolvedOpenAIAuthToken } from "./provider-usage.types.js"
 import {
   createInitialCoexistenceState,
   type HudChannelMode,
@@ -179,6 +182,27 @@ function parseUsagePromptIntervalMs(value: string | undefined): number | null {
 
   if (parsed === 0 || parsed >= 1000) {
     return parsed
+  }
+
+  return null
+}
+
+/**
+ * Resolve which provider key to use for API usage data based on providerID and modelID.
+ * Returns null if provider is unknown or doesn't have a usage API.
+ */
+function resolveProviderKey(providerID: string, modelID: string): ProviderKey | null {
+  const lowerProvider = providerID.toLowerCase()
+  const lowerModel = modelID.toLowerCase()
+
+  // Anthropic models
+  if (lowerProvider.includes("anthropic") || lowerModel.includes("claude") || lowerModel.includes("opus") || lowerModel.includes("sonnet") || lowerModel.includes("haiku")) {
+    return "anthropic"
+  }
+
+  // OpenAI models
+  if (lowerProvider.includes("openai") || lowerModel.includes("gpt") || lowerModel.includes("codex") || lowerModel.includes("o1") || lowerModel.includes("o3") || lowerModel.includes("o4")) {
+    return "openai"
   }
 
   return null
@@ -504,16 +528,18 @@ export function buildAssistantUsageLine(input: {
 }
 
 function appendUsageLineToOutputText(text: string, usageLine: string): string {
+  // Check raw content (without dim wrapper)
   if (text.includes(usageLine)) {
     return text
   }
 
+  const dimLine = `\x1b[2m${usageLine}\x1b[22m`
   const base = text.trimEnd()
   if (base.length === 0) {
-    return usageLine
+    return dimLine
   }
 
-  return `${base}\n\n${usageLine}`
+  return `${base}\n\n${dimLine}`
 }
 
 export function createHudPluginHooks(
@@ -528,42 +554,94 @@ export function createHudPluginHooks(
   const aggregator = createUsageAggregator()
   const diskCache = createDiskCache()
 
-  // Variable to hold cached API snapshot for immediate display
-  let cachedApiSnapshot: ProviderUsageSnapshot | null = null
+  // Cache snapshots per provider for immediate display
+  const cachedApiSnapshots: Partial<Record<ProviderKey, ProviderUsageSnapshot>> = {}
 
   // Phase 1: Load disk cache immediately (instant strip on restart)
   diskCache.load().then(cached => {
     if (cached) {
       aggregator.fromJSON(cached.samples)
       registry.restore(cached.modelRegistry)
-      if (cached.providerUsage) {
-        cachedApiSnapshot = cached.providerUsage
+      if (cached.providerUsages) {
+        for (const [key, snapshot] of Object.entries(cached.providerUsages)) {
+          if (snapshot !== undefined) {
+            cachedApiSnapshots[key as ProviderKey] = snapshot
+          }
+        }
       }
     }
   }).catch(() => { /* ignore cache load failure */ })
 
-  // Phase 3: Initialize API polling for real usage data
-  const pollingManager = runtimeOptions.pollingManagerOverride ?? createPollingManager({
+  // Shared cache save helper
+  function buildProviderUsagesForCache(): Partial<Record<ProviderKey, ProviderUsageSnapshot>> {
+    const usages: Partial<Record<ProviderKey, ProviderUsageSnapshot>> = {}
+    const anthropicSnapshot = anthropicPoller.latest() ?? cachedApiSnapshots.anthropic
+    const openaiSnapshot = openaiPoller.latest() ?? cachedApiSnapshots.openai
+    if (anthropicSnapshot !== undefined) usages.anthropic = anthropicSnapshot
+    if (openaiSnapshot !== undefined) usages.openai = openaiSnapshot
+    return usages
+  }
+
+  function saveCacheDebounced(): void {
+    diskCache.save({
+      version: 3,
+      lastFetchMs: Date.now(),
+      samples: aggregator.toJSON(),
+      modelRegistry: registry.snapshot(),
+      providerUsages: buildProviderUsagesForCache()
+    }).catch(() => {})
+  }
+
+  // Helper to get snapshot for a provider
+  function getProviderSnapshot(providerKey: ProviderKey | null): ProviderUsageSnapshot | null {
+    if (providerKey === "anthropic") {
+      return anthropicPoller.latest() ?? cachedApiSnapshots.anthropic ?? null
+    }
+    if (providerKey === "openai") {
+      return openaiPoller.latest() ?? cachedApiSnapshots.openai ?? null
+    }
+    return null
+  }
+
+  // Anthropic poller
+  const anthropicPoller = runtimeOptions.pollingManagerOverride ?? createPollingManager({
     intervalMs: 60_000,
     maxBackoffMs: 300_000,
     authResolver: () => resolveAuthToken(undefined),
     fetcher: (token) => fetchClaudeUsage({ token }),
-    onSnapshot: (snapshot: ProviderUsageSnapshot) => {
-      // Persist API snapshot alongside existing cache data
-      diskCache.save({
-        version: 2,
-        lastFetchMs: Date.now(),
-        samples: aggregator.toJSON(),
-        modelRegistry: registry.snapshot(),
-        providerUsage: snapshot
-      }).catch(() => { /* ignore cache save failure */ })
+    onSnapshot: () => {
+      saveCacheDebounced()
+    }
+  })
+
+  // OpenAI poller — uses closure to pass the real token type
+  let latestOpenAIToken: ResolvedOpenAIAuthToken | null = null
+
+  const openaiPoller = createPollingManager({
+    intervalMs: 60_000,
+    maxBackoffMs: 300_000,
+    authResolver: async () => {
+      const token = await resolveOpenAIAuthToken()
+      latestOpenAIToken = token
+      if (token === null) return null
+      return { token: token.accessToken, source: "env-oauth" as const, kind: "oauth" as const }
+    },
+    fetcher: async () => {
+      if (latestOpenAIToken === null) {
+        return { provider: "openai" as const, fetchedAtMs: Date.now(), windows: [], error: "no token" }
+      }
+      return fetchOpenAIUsage({ token: latestOpenAIToken })
+    },
+    onSnapshot: () => {
+      saveCacheDebounced()
     }
   })
 
   // Start polling (non-blocking) if not using override
   if (!runtimeOptions.pollingManagerOverride) {
-    pollingManager.start()
+    anthropicPoller.start()
   }
+  openaiPoller.start()
 
   // Phase 2: Fetch from local SDK (background, non-blocking)
   if (ctx.client) {
@@ -603,13 +681,7 @@ export function createHudPluginHooks(
       costRatesLookup: (pid, mid) => registry.get(pid, mid)?.cost ?? null
     }).then(count => {
       if (count > 0) {
-        diskCache.save({
-          version: 2,
-          lastFetchMs: Date.now(),
-          samples: aggregator.toJSON(),
-          modelRegistry: registry.snapshot(),
-          providerUsage: pollingManager.latest() ?? cachedApiSnapshot ?? undefined
-        }).catch(() => {})
+        saveCacheDebounced()
       }
     }).catch(() => { /* historical load unavailable */ })
   }
@@ -620,14 +692,7 @@ export function createHudPluginHooks(
 
   const upsertUsageSample = (sample: UsageSample): void => {
     aggregator.upsertSample(sample)
-    // Async cache save (fire-and-forget)
-    diskCache.save({
-      version: 2,
-      lastFetchMs: Date.now(),
-      samples: aggregator.toJSON(),
-      modelRegistry: registry.snapshot(),
-      providerUsage: pollingManager.latest() ?? cachedApiSnapshot ?? undefined
-    }).catch(() => {})
+    saveCacheDebounced()
   }
 
   const buildUsageLineFromMessageUsage = (input: {
@@ -636,6 +701,7 @@ export function createHudPluginHooks(
     nowMs: number
   }): string => {
     trimUsageSamples(input.nowMs)
+    const providerKey = resolveProviderKey(input.usage.providerID, input.usage.modelID)
 
     return buildAssistantUsageLine({
       sessionKey: input.sessionKey,
@@ -645,7 +711,7 @@ export function createHudPluginHooks(
       contextLimitTokens: input.usage.contextLimitTokens,
       usageSamples: aggregator.allSamples(),
       nowMs: input.nowMs,
-      apiUsage: pollingManager.latest() ?? cachedApiSnapshot
+      apiUsage: getProviderSnapshot(providerKey)
     })
   }
 

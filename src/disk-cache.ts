@@ -4,7 +4,7 @@ import { homedir } from "node:os"
 
 import type { UsageSample } from "./plugin.js"
 import type { ModelRegistryEntry } from "./model-registry.js"
-import type { ProviderUsageSnapshot } from "./provider-usage.types.js"
+import type { ProviderUsageSnapshot, ProviderKey } from "./provider-usage.types.js"
 
 /** v1 schema - kept for migration reference */
 interface DiskCacheDataV1 {
@@ -15,12 +15,21 @@ interface DiskCacheDataV1 {
 }
 
 /** v2 schema - extends v1 with optional providerUsage */
-export interface DiskCacheData {
+interface DiskCacheDataV2 {
   version: 2
   lastFetchMs: number
   samples: UsageSample[]
   modelRegistry: ModelRegistryEntry[]
   providerUsage?: ProviderUsageSnapshot | undefined
+}
+
+/** v3 schema - extends v2 with multi-provider usage */
+export interface DiskCacheData {
+  version: 3
+  lastFetchMs: number
+  samples: UsageSample[]
+  modelRegistry: ModelRegistryEntry[]
+  providerUsages?: Partial<Record<ProviderKey, ProviderUsageSnapshot>> | undefined
 }
 
 export interface DiskCache {
@@ -56,18 +65,34 @@ export function createDiskCache(options?: DiskCacheOptions): DiskCache {
 
         const version = (parsed as { version: unknown }).version
 
-        if (version === 2) {
+        if (version === 3) {
           return parsed as DiskCacheData
+        }
+
+        if (version === 2) {
+          const v2 = parsed as DiskCacheDataV2
+          // v2 → v3: migrate single providerUsage to providerUsages map
+          const providerUsages: Partial<Record<ProviderKey, ProviderUsageSnapshot>> | undefined =
+            v2.providerUsage !== undefined
+              ? { anthropic: v2.providerUsage }
+              : undefined
+          return {
+            version: 3,
+            lastFetchMs: v2.lastFetchMs,
+            samples: v2.samples,
+            modelRegistry: v2.modelRegistry,
+            providerUsages
+          }
         }
 
         if (version === 1) {
           const v1 = parsed as DiskCacheDataV1
           return {
-            version: 2,
+            version: 3,
             lastFetchMs: v1.lastFetchMs,
             samples: v1.samples,
             modelRegistry: v1.modelRegistry,
-            providerUsage: undefined
+            providerUsages: undefined
           }
         }
 
