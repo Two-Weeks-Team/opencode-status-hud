@@ -18,6 +18,10 @@
     ".": {
       "types": "./dist/src/index.d.ts",
       "import": "./dist/src/index.js"
+    },
+    "./api": {
+      "types": "./dist/src/api.d.ts",
+      "import": "./dist/src/api.js"
     }
   },
   "engines": {
@@ -37,6 +41,7 @@
     "vitest": "3.0.9"
   },
   "dependencies": {
+    "@opencode-ai/plugin": "^1.2.10",
     "jsonc-parser": "^3.3.1"
   }
 }
