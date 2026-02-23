@@ -367,7 +367,8 @@ function resolveModelTheme(modelID: string): ModelTheme {
   return { emoji: "\u26AA", ansiColor: "\x1b[37m", ansiReset: ANSI_RESET }  // ⚪ white/default
 }
 
-function resolveAgentTheme(agentName: string): ModelTheme | null {
+function resolveAgentTheme(agentName: unknown): ModelTheme | null {
+  if (typeof agentName !== "string") return null
   const lower = agentName.toLowerCase()
   if (lower === "sisyphus") return { emoji: "\uD83D\uDD35", ansiColor: "\x1b[36m", ansiReset: ANSI_RESET }    // 🔵 cyan
   if (lower === "hephaestus") return { emoji: "\uD83D\uDFE0", ansiColor: "\x1b[33m", ansiReset: ANSI_RESET }  // 🟠 orange/yellow
@@ -985,7 +986,15 @@ export function createHudPluginHooks(
     "chat.params": async (input) => {
       try {
         if (input.agent && input.sessionID) {
-          sessionAgentMap.set(toSessionKey(input.sessionID), input.agent)
+          const rawAgent: unknown = input.agent
+          const name = typeof rawAgent === "string"
+            ? rawAgent
+            : (typeof rawAgent === "object" && rawAgent !== null && "name" in rawAgent && typeof (rawAgent as Record<string, unknown>).name === "string")
+              ? (rawAgent as Record<string, unknown>).name as string
+              : undefined
+          if (name) {
+            sessionAgentMap.set(toSessionKey(input.sessionID), name)
+          }
         }
         if (input.model && input.provider) {
           const model = input.model as unknown as ChatParamsModel
