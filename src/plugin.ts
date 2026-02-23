@@ -5,6 +5,7 @@ import { resolveMessageCost, type TokenBreakdown } from "./cost-calculator.js"
 import { createUsageAggregator, type UsageAggregator, type AggregatorClient } from "./usage-aggregator.js"
 import { createDiskCache, type DiskCache, type DiskCacheData } from "./disk-cache.js"
 
+import type { ProviderUsageSnapshot } from "./provider-usage.types.js"
 import {
   createInitialCoexistenceState,
   type HudChannelMode,
@@ -226,6 +227,39 @@ function formatDurationCompactDays(ms: number): string {
   return `${totalMinutes}m`
 }
 
+/**
+ * Format resets_at for 5h window: within 24h shows duration, >24h shows weekday.
+ */
+function formatResetsAtCompact(resetAtMs: number | undefined, nowMs: number): string {
+  if (resetAtMs === undefined) return "?"
+  const diff = resetAtMs - nowMs
+  if (diff <= 0) return "now"
+  if (diff < 24 * 60 * 60 * 1000) {
+    return formatDurationCompact(diff)
+  }
+  return formatWeekdayTime(resetAtMs)
+}
+
+/**
+ * Format resets_at for 7d window: always weekday + time.
+ */
+function formatResetsAt7d(resetAtMs: number | undefined): string {
+  if (resetAtMs === undefined) return "?"
+  return formatWeekdayTime(resetAtMs)
+}
+
+/**
+ * Format epoch ms as "Mon 14:00" in local timezone.
+ */
+function formatWeekdayTime(epochMs: number): string {
+  const date = new Date(epochMs)
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+  const dayName = days[date.getDay()] ?? "???"
+  const hours = String(date.getHours()).padStart(2, "0")
+  const minutes = String(date.getMinutes()).padStart(2, "0")
+  return `${dayName} ${hours}:${minutes}`
+}
+
 function formatPercent(value: number): string {
   const clamped = Math.max(0, Math.min(100, Math.round(asFiniteNumber(value))))
   return `${clamped}%`
@@ -338,7 +372,7 @@ function buildAssistantUsageToast(input: {
   }
 }
 
-function buildAssistantUsageLine(input: {
+export function buildAssistantUsageLine(input: {
   sessionKey: string
   providerID: string
   modelID: string
@@ -346,6 +380,7 @@ function buildAssistantUsageLine(input: {
   contextLimitTokens: number
   usageSamples: UsageSample[]
   nowMs: number
+  apiUsage?: ProviderUsageSnapshot | null | undefined
 }): string {
   const contextLimit = Math.max(1, Math.trunc(asFiniteNumber(input.contextLimitTokens)))
   const contextUsed = Math.max(0, Math.trunc(asFiniteNumber(input.contextUsedTokens)))
@@ -357,8 +392,6 @@ function buildAssistantUsageLine(input: {
 
   const samples5h = input.usageSamples.filter((sample) => sample.completedMs >= lowerBound5h)
   const samples7d = input.usageSamples.filter((sample) => sample.completedMs >= lowerBound7d)
-
-  
 
   const oldest5h = samples5h.reduce<number | null>((oldest, sample) => {
     if (oldest === null || sample.completedMs < oldest) {
@@ -390,6 +423,31 @@ function buildAssistantUsageLine(input: {
   const denominator7d = contextLimit * WINDOWS_PER_SEVEN_DAYS
   const approxPercent7d = denominator7d > 0 ? Math.min(100, Math.round((totalContext7d / denominator7d) * 100)) : 0
 
+  // If apiUsage is available and has no error, use real API data
+  if (input.apiUsage && !input.apiUsage.error) {
+    const window5h = input.apiUsage.windows.find((w) => w.label === "5h")
+    const window7d = input.apiUsage.windows.find((w) => w.label === "7d")
+
+    const seg5h = window5h
+      ? `5h: ${window5h.usedPercent}% (${formatResetsAtCompact(window5h.resetAtMs, input.nowMs)})`
+      : `5h: ~${approxPercent5h}% (${formatDurationCompact(windowRemainingMs)})`
+
+    const seg7d = window7d
+      ? `7d: ${window7d.usedPercent}% (${formatResetsAt7d(window7d.resetAtMs)})`
+      : `7d: ~${approxPercent7d}% (${formatDurationCompactDays(windowRemaining7dMs)})`
+
+    return [
+      modelLabel,
+      buildProgressBar(contextPercent),
+      `${formatPercent(contextPercent)}${warningIndicator}`,
+      `${formatCompactTokens(contextUsed)}/${formatCompactTokens(contextLimit)}`,
+      formatCostCompact(sessionCost),
+      seg5h,
+      seg7d
+    ].join(" | ")
+  }
+
+  // Fallback: self-calculated approximations
   return [
     modelLabel,
     buildProgressBar(contextPercent),
