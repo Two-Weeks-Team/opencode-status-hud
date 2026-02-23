@@ -269,11 +269,17 @@ function formatPercent(value: number): string {
   return `${clamped}%`
 }
 
-function buildProgressBar(percent: number): string {
+function buildProgressBar(percent: number, theme?: ModelTheme | undefined): string {
   const clamped = Math.max(0, Math.min(100, asFiniteNumber(percent)))
   const width = 12
   const filled = Math.max(0, Math.min(width, Math.round((clamped / 100) * width)))
-  return `${"█".repeat(filled)}${"░".repeat(width - filled)}`
+  const filledStr = "█".repeat(filled)
+  const emptyStr = "░".repeat(width - filled)
+
+  if (theme) {
+    return `${theme.ansiColor}${filledStr}${theme.ansiReset}${emptyStr}`
+  }
+  return `${filledStr}${emptyStr}`
 }
 
 function summarizeModelLabel(modelID: string): string {
@@ -296,6 +302,39 @@ function summarizeModelLabel(modelID: string): string {
 
   const lastSegment = modelID.split("/").at(-1) ?? modelID
   return truncateLabel(lastSegment, 18)
+}
+
+interface ModelTheme {
+  emoji: string     // Colored circle emoji
+  ansiColor: string // ANSI escape code for color (e.g., "\x1b[35m" for magenta)
+  ansiReset: string // "\x1b[0m"
+}
+
+const ANSI_RESET = "\x1b[0m"
+
+function resolveModelTheme(modelID: string): ModelTheme {
+  const lower = modelID.toLowerCase()
+
+  if (lower.includes("claude-opus") || lower.includes("opus")) {
+    return { emoji: "\uD83D\uDFE3", ansiColor: "\x1b[35m", ansiReset: ANSI_RESET }  // 🟣 purple/magenta
+  }
+  if (lower.includes("claude-sonnet") || lower.includes("sonnet")) {
+    return { emoji: "\uD83D\uDFE0", ansiColor: "\x1b[33m", ansiReset: ANSI_RESET }  // 🟠 orange/yellow
+  }
+  if (lower.includes("claude-haiku") || lower.includes("haiku")) {
+    return { emoji: "\uD83D\uDFE2", ansiColor: "\x1b[32m", ansiReset: ANSI_RESET }  // 🟢 green
+  }
+  if (lower.includes("gpt-5") || lower.includes("gpt-4") || lower.includes("openai")) {
+    return { emoji: "\uD83D\uDFE1", ansiColor: "\x1b[33m", ansiReset: ANSI_RESET }  // 🟡 yellow
+  }
+  if (lower.includes("gemini") || lower.includes("google")) {
+    return { emoji: "\uD83D\uDD35", ansiColor: "\x1b[36m", ansiReset: ANSI_RESET }  // 🔵 cyan
+  }
+  if (lower.includes("deepseek")) {
+    return { emoji: "\uD83D\uDFE4", ansiColor: "\x1b[34m", ansiReset: ANSI_RESET }  // 🟤 blue (brown emoji)
+  }
+  // Default: white circle
+  return { emoji: "\u26AA", ansiColor: "\x1b[37m", ansiReset: ANSI_RESET }  // ⚪ white/default
 }
 
 function resolveRuntimeConfig(env: NodeJS.ProcessEnv = process.env): HudRuntimeConfig {
@@ -390,6 +429,7 @@ export function buildAssistantUsageLine(input: {
   const contextUsed = Math.max(0, Math.trunc(asFiniteNumber(input.contextUsedTokens)))
   const contextPercent = (contextUsed / contextLimit) * 100
   const modelLabel = summarizeModelLabel(input.modelID)
+  const theme = resolveModelTheme(input.modelID)
 
   const lowerBound5h = input.nowMs - FIVE_HOURS_MS
   const lowerBound7d = input.nowMs - SEVEN_DAYS_MS
@@ -441,8 +481,8 @@ export function buildAssistantUsageLine(input: {
       : `7d: ~${approxPercent7d}% (${formatDurationCompactDays(windowRemaining7dMs)})`
 
     return [
-      modelLabel,
-      buildProgressBar(contextPercent),
+      `${theme.emoji} ${modelLabel}`,
+      buildProgressBar(contextPercent, theme),
       `${formatPercent(contextPercent)}${warningIndicator}`,
       `${formatCompactTokens(contextUsed)}/${formatCompactTokens(contextLimit)}`,
       formatCostCompact(sessionCost),
@@ -453,8 +493,8 @@ export function buildAssistantUsageLine(input: {
 
   // Fallback: self-calculated approximations
   return [
-    modelLabel,
-    buildProgressBar(contextPercent),
+    `${theme.emoji} ${modelLabel}`,
+    buildProgressBar(contextPercent, theme),
     `${formatPercent(contextPercent)}${warningIndicator}`,
     `${formatCompactTokens(contextUsed)}/${formatCompactTokens(contextLimit)}`,
     formatCostCompact(sessionCost),
