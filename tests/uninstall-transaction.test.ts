@@ -73,6 +73,29 @@ describe("uninstallHudPluginTransaction", () => {
     expect(updated.plugin).toEqual(["opencode-status-hud"])
   })
 
+  it("removes only HUD and keeps oh-my-opencode intact", async () => {
+    const root = await createTempDir("hud-uninstall-transaction-")
+    const configPath = path.join(root, "opencode.json")
+    await fs.writeFile(
+      configPath,
+      JSON.stringify(
+        {
+          plugin: ["oh-my-opencode", "opencode-status-hud", "opencode-gemini-auth@latest"]
+        },
+        null,
+        2
+      ),
+      "utf8"
+    )
+
+    const result = await uninstallHudPluginTransaction({ configPath })
+    expectUninstallUninstalled(result)
+    expect(result.changed).toBe(true)
+
+    const updated = JSON.parse(await fs.readFile(configPath, "utf8")) as { plugin?: string[] }
+    expect(updated.plugin).toEqual(["oh-my-opencode", "opencode-gemini-auth@latest"])
+  })
+
   it("restores from backup when failure leaves config missing", async () => {
     const root = await createTempDir("hud-uninstall-transaction-")
     const configPath = path.join(root, "opencode.json")
