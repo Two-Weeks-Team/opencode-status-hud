@@ -473,10 +473,11 @@ export function createHudPluginHooks(
     }).then(count => {
       if (count > 0) {
         diskCache.save({
-          version: 1,
+          version: 2,
           lastFetchMs: Date.now(),
           samples: aggregator.toJSON(),
-          modelRegistry: registry.snapshot()
+          modelRegistry: registry.snapshot(),
+          providerUsage: undefined
         }).catch(() => {})
       }
     }).catch(() => { /* historical load unavailable */ })
@@ -490,10 +491,11 @@ export function createHudPluginHooks(
     aggregator.upsertSample(sample)
     // Async cache save (fire-and-forget)
     diskCache.save({
-      version: 1,
+      version: 2,
       lastFetchMs: Date.now(),
       samples: aggregator.toJSON(),
-      modelRegistry: registry.snapshot()
+      modelRegistry: registry.snapshot(),
+      providerUsage: undefined
     }).catch(() => {})
   }
 

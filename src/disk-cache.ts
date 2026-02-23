@@ -4,12 +4,23 @@ import { homedir } from "node:os"
 
 import type { UsageSample } from "./plugin.js"
 import type { ModelRegistryEntry } from "./model-registry.js"
+import type { ProviderUsageSnapshot } from "./provider-usage.types.js"
 
-export interface DiskCacheData {
+/** v1 schema - kept for migration reference */
+interface DiskCacheDataV1 {
   version: 1
   lastFetchMs: number
   samples: UsageSample[]
   modelRegistry: ModelRegistryEntry[]
+}
+
+/** v2 schema - extends v1 with optional providerUsage */
+export interface DiskCacheData {
+  version: 2
+  lastFetchMs: number
+  samples: UsageSample[]
+  modelRegistry: ModelRegistryEntry[]
+  providerUsage?: ProviderUsageSnapshot | undefined
 }
 
 export interface DiskCache {
@@ -36,12 +47,28 @@ export function createDiskCache(options?: DiskCacheOptions): DiskCache {
         const parsed = JSON.parse(content) as unknown
 
         if (
-          typeof parsed === "object" &&
-          parsed !== null &&
-          "version" in parsed &&
-          (parsed as { version: unknown }).version === 1
+          typeof parsed !== "object" ||
+          parsed === null ||
+          !("version" in parsed)
         ) {
+          return null
+        }
+
+        const version = (parsed as { version: unknown }).version
+
+        if (version === 2) {
           return parsed as DiskCacheData
+        }
+
+        if (version === 1) {
+          const v1 = parsed as DiskCacheDataV1
+          return {
+            version: 2,
+            lastFetchMs: v1.lastFetchMs,
+            samples: v1.samples,
+            modelRegistry: v1.modelRegistry,
+            providerUsage: undefined
+          }
         }
 
         return null
