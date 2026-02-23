@@ -101,7 +101,7 @@ export function buildUsageWindows(response: AnthropicUsageApiResponse): UsageWin
   const windows: UsageWindow[] = []
 
   // five_hour → label "5h"
-  if (response.five_hour !== undefined) {
+  if (response.five_hour != null) {
     const { utilization, resets_at } = response.five_hour
     if (utilization !== undefined) {
       windows.push({
@@ -113,7 +113,7 @@ export function buildUsageWindows(response: AnthropicUsageApiResponse): UsageWin
   }
 
   // seven_day → label "7d"
-  if (response.seven_day !== undefined) {
+  if (response.seven_day != null) {
     const { utilization, resets_at } = response.seven_day
     if (utilization !== undefined) {
       windows.push({
@@ -125,7 +125,7 @@ export function buildUsageWindows(response: AnthropicUsageApiResponse): UsageWin
   }
 
   // seven_day_sonnet → label "7d-sonnet"
-  if (response.seven_day_sonnet !== undefined) {
+  if (response.seven_day_sonnet != null) {
     const { utilization } = response.seven_day_sonnet
     if (utilization !== undefined) {
       windows.push({
@@ -136,7 +136,7 @@ export function buildUsageWindows(response: AnthropicUsageApiResponse): UsageWin
   }
 
   // seven_day_opus → label "7d-opus"
-  if (response.seven_day_opus !== undefined) {
+  if (response.seven_day_opus != null) {
     const { utilization } = response.seven_day_opus
     if (utilization !== undefined) {
       windows.push({
