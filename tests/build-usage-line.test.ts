@@ -302,7 +302,67 @@ describe("buildAssistantUsageLine model emoji indicators", () => {
       contextLimitTokens: 100000
     })
     expect(result).toContain("\x1b[35m")
-    expect(result).toContain("\x1b[0m")
+    expect(result).toContain("\x1b[39m")
+  })
+})
+
+describe("buildAssistantUsageLine agent theming", () => {
+  const baseInput = {
+    sessionKey: "ses_test",
+    providerID: "anthropic",
+    modelID: "claude-opus-4",
+    contextUsedTokens: 27000,
+    contextLimitTokens: 200000,
+    usageSamples: [],
+    nowMs: 1000000000000
+  }
+
+  it("uses Sisyphus cyan theme when agentName provided", () => {
+    const result = buildAssistantUsageLine({ ...baseInput, agentName: "Sisyphus" })
+    expect(result).toContain("🔵")
+    expect(result).toContain("\x1b[36m")
+  })
+
+  it("uses Hephaestus orange theme", () => {
+    const result = buildAssistantUsageLine({ ...baseInput, agentName: "Hephaestus" })
+    expect(result).toContain("🟠")
+    expect(result).toContain("\x1b[33m")
+  })
+
+  it("uses Prometheus red theme", () => {
+    const result = buildAssistantUsageLine({ ...baseInput, agentName: "Prometheus" })
+    expect(result).toContain("🔴")
+    expect(result).toContain("\x1b[31m")
+  })
+
+  it("uses Atlas green theme", () => {
+    const result = buildAssistantUsageLine({ ...baseInput, agentName: "Atlas" })
+    expect(result).toContain("🟢")
+    expect(result).toContain("\x1b[32m")
+  })
+
+  it("uses Build blue theme for vanilla opencode", () => {
+    const result = buildAssistantUsageLine({ ...baseInput, agentName: "Build" })
+    expect(result).toContain("🔵")
+    expect(result).toContain("\x1b[34m")
+  })
+
+  it("uses Plan yellow theme for vanilla opencode", () => {
+    const result = buildAssistantUsageLine({ ...baseInput, agentName: "Plan" })
+    expect(result).toContain("🟡")
+    expect(result).toContain("\x1b[33m")
+  })
+
+  it("falls back to model theme for unknown agent", () => {
+    const result = buildAssistantUsageLine({ ...baseInput, agentName: "UnknownAgent" })
+    expect(result).toContain("🟣")
+    expect(result).toContain("\x1b[35m")
+  })
+
+  it("uses model theme when no agentName provided", () => {
+    const result = buildAssistantUsageLine({ ...baseInput })
+    expect(result).toContain("🟣")
+    expect(result).toContain("\x1b[35m")
   })
 })
 

@@ -331,10 +331,16 @@ function summarizeModelLabel(modelID: string): string {
 interface ModelTheme {
   emoji: string     // Colored circle emoji
   ansiColor: string // ANSI escape code for color (e.g., "\x1b[35m" for magenta)
-  ansiReset: string // "\x1b[0m"
+  ansiReset: string // "\x1b[39m" — resets foreground only, preserves dim/bold
 }
 
-const ANSI_RESET = "\x1b[0m"
+/**
+ * Reset foreground color only (\x1b[39m).
+ *
+ * Using \x1b[0m would reset ALL attributes including the outer dim wrapper
+ * (\x1b[2m), causing text after the progress bar to appear at full brightness.
+ */
+const ANSI_RESET = "\x1b[39m"
 
 function resolveModelTheme(modelID: string): ModelTheme {
   const lower = modelID.toLowerCase()
@@ -359,6 +365,17 @@ function resolveModelTheme(modelID: string): ModelTheme {
   }
   // Default: white circle
   return { emoji: "\u26AA", ansiColor: "\x1b[37m", ansiReset: ANSI_RESET }  // ⚪ white/default
+}
+
+function resolveAgentTheme(agentName: string): ModelTheme | null {
+  const lower = agentName.toLowerCase()
+  if (lower === "sisyphus") return { emoji: "\uD83D\uDD35", ansiColor: "\x1b[36m", ansiReset: ANSI_RESET }    // 🔵 cyan
+  if (lower === "hephaestus") return { emoji: "\uD83D\uDFE0", ansiColor: "\x1b[33m", ansiReset: ANSI_RESET }  // 🟠 orange/yellow
+  if (lower === "prometheus") return { emoji: "\uD83D\uDD34", ansiColor: "\x1b[31m", ansiReset: ANSI_RESET }  // 🔴 red
+  if (lower === "atlas") return { emoji: "\uD83D\uDFE2", ansiColor: "\x1b[32m", ansiReset: ANSI_RESET }       // 🟢 green
+  if (lower === "build") return { emoji: "\uD83D\uDD35", ansiColor: "\x1b[34m", ansiReset: ANSI_RESET }       // 🔵 blue
+  if (lower === "plan") return { emoji: "\uD83D\uDFE1", ansiColor: "\x1b[33m", ansiReset: ANSI_RESET }        // 🟡 yellow
+  return null
 }
 
 function resolveRuntimeConfig(env: NodeJS.ProcessEnv = process.env): HudRuntimeConfig {
@@ -448,12 +465,14 @@ export function buildAssistantUsageLine(input: {
   usageSamples: UsageSample[]
   nowMs: number
   apiUsage?: ProviderUsageSnapshot | null | undefined
+  agentName?: string | undefined
 }): string {
   const contextLimit = Math.max(1, Math.trunc(asFiniteNumber(input.contextLimitTokens)))
   const contextUsed = Math.max(0, Math.trunc(asFiniteNumber(input.contextUsedTokens)))
   const contextPercent = (contextUsed / contextLimit) * 100
   const modelLabel = summarizeModelLabel(input.modelID)
-  const theme = resolveModelTheme(input.modelID)
+  const agentTheme = input.agentName !== undefined ? resolveAgentTheme(input.agentName) : null
+  const theme = agentTheme ?? resolveModelTheme(input.modelID)
 
   const lowerBound5h = input.nowMs - FIVE_HOURS_MS
   const lowerBound7d = input.nowMs - SEVEN_DAYS_MS
@@ -548,6 +567,7 @@ export function createHudPluginHooks(
   runtimeOptions: HudPluginRuntimeOptions = {}
 ): HudPluginHooks {
   const sessionRuntimes = new Map<string, SessionRuntime>()
+  const sessionAgentMap = new Map<string, string>()
   let latestSessionKey: string | null = null
 
   const registry = createModelRegistry()
@@ -702,6 +722,7 @@ export function createHudPluginHooks(
   }): string => {
     trimUsageSamples(input.nowMs)
     const providerKey = resolveProviderKey(input.usage.providerID, input.usage.modelID)
+    const agentName = sessionAgentMap.get(input.sessionKey)
 
     return buildAssistantUsageLine({
       sessionKey: input.sessionKey,
@@ -711,7 +732,8 @@ export function createHudPluginHooks(
       contextLimitTokens: input.usage.contextLimitTokens,
       usageSamples: aggregator.allSamples(),
       nowMs: input.nowMs,
-      apiUsage: getProviderSnapshot(providerKey)
+      apiUsage: getProviderSnapshot(providerKey),
+      agentName
     })
   }
 
@@ -962,6 +984,9 @@ export function createHudPluginHooks(
 
     "chat.params": async (input) => {
       try {
+        if (input.agent && input.sessionID) {
+          sessionAgentMap.set(input.sessionID, input.agent)
+        }
         if (input.model && input.provider) {
           const model = input.model as unknown as ChatParamsModel
           const provider = input.provider as unknown as ChatParamsProviderCtx
