@@ -329,7 +329,6 @@ function summarizeModelLabel(modelID: string): string {
 }
 
 interface ModelTheme {
-  emoji: string     // Colored circle emoji
   ansiColor: string // ANSI escape code for color (e.g., "\x1b[35m" for magenta)
   ansiReset: string // "\x1b[39m" — resets foreground only, preserves dim/bold
 }
@@ -346,37 +345,42 @@ function resolveModelTheme(modelID: string): ModelTheme {
   const lower = modelID.toLowerCase()
 
   if (lower.includes("claude-opus") || lower.includes("opus")) {
-    return { emoji: "\uD83D\uDFE3", ansiColor: "\x1b[35m", ansiReset: ANSI_RESET }  // 🟣 purple/magenta
+    return { ansiColor: "\x1b[35m", ansiReset: ANSI_RESET }  // purple/magenta
   }
   if (lower.includes("claude-sonnet") || lower.includes("sonnet")) {
-    return { emoji: "\uD83D\uDFE0", ansiColor: "\x1b[33m", ansiReset: ANSI_RESET }  // 🟠 orange/yellow
+    return { ansiColor: "\x1b[33m", ansiReset: ANSI_RESET }  // orange/yellow
   }
   if (lower.includes("claude-haiku") || lower.includes("haiku")) {
-    return { emoji: "\uD83D\uDFE2", ansiColor: "\x1b[32m", ansiReset: ANSI_RESET }  // 🟢 green
+    return { ansiColor: "\x1b[32m", ansiReset: ANSI_RESET }  // green
   }
   if (lower.includes("gpt-5") || lower.includes("gpt-4") || lower.includes("openai")) {
-    return { emoji: "\uD83D\uDFE1", ansiColor: "\x1b[33m", ansiReset: ANSI_RESET }  // 🟡 yellow
+    return { ansiColor: "\x1b[33m", ansiReset: ANSI_RESET }  // yellow
   }
   if (lower.includes("gemini") || lower.includes("google")) {
-    return { emoji: "\uD83D\uDD35", ansiColor: "\x1b[36m", ansiReset: ANSI_RESET }  // 🔵 cyan
+    return { ansiColor: "\x1b[36m", ansiReset: ANSI_RESET }  // cyan
   }
   if (lower.includes("deepseek")) {
-    return { emoji: "\uD83D\uDFE4", ansiColor: "\x1b[34m", ansiReset: ANSI_RESET }  // 🟤 blue (brown emoji)
+    return { ansiColor: "\x1b[34m", ansiReset: ANSI_RESET }  // blue
   }
-  // Default: white circle
-  return { emoji: "\u26AA", ansiColor: "\x1b[37m", ansiReset: ANSI_RESET }  // ⚪ white/default
+  // Default
+  return { ansiColor: "\x1b[37m", ansiReset: ANSI_RESET }  // white/default
 }
 
 function resolveAgentTheme(agentName: unknown): ModelTheme | null {
   if (typeof agentName !== "string") return null
   const lower = agentName.toLowerCase()
-  if (lower === "sisyphus") return { emoji: "\uD83D\uDD35", ansiColor: "\x1b[36m", ansiReset: ANSI_RESET }    // 🔵 cyan
-  if (lower === "hephaestus") return { emoji: "\uD83D\uDFE0", ansiColor: "\x1b[33m", ansiReset: ANSI_RESET }  // 🟠 orange/yellow
-  if (lower === "prometheus") return { emoji: "\uD83D\uDD34", ansiColor: "\x1b[31m", ansiReset: ANSI_RESET }  // 🔴 red
-  if (lower === "atlas") return { emoji: "\uD83D\uDFE2", ansiColor: "\x1b[32m", ansiReset: ANSI_RESET }       // 🟢 green
-  if (lower === "build") return { emoji: "\uD83D\uDD35", ansiColor: "\x1b[34m", ansiReset: ANSI_RESET }       // 🔵 blue
-  if (lower === "plan") return { emoji: "\uD83D\uDFE1", ansiColor: "\x1b[33m", ansiReset: ANSI_RESET }        // 🟡 yellow
+  if (lower.startsWith("sisyphus")) return { ansiColor: "\x1b[36m", ansiReset: ANSI_RESET }    // cyan
+  if (lower.startsWith("hephaestus")) return { ansiColor: "\x1b[33m", ansiReset: ANSI_RESET }  // orange/yellow
+  if (lower.startsWith("prometheus")) return { ansiColor: "\x1b[31m", ansiReset: ANSI_RESET }  // red
+  if (lower.startsWith("atlas")) return { ansiColor: "\x1b[32m", ansiReset: ANSI_RESET }       // green
+  if (lower.startsWith("build")) return { ansiColor: "\x1b[34m", ansiReset: ANSI_RESET }       // blue
+  if (lower.startsWith("plan")) return { ansiColor: "\x1b[33m", ansiReset: ANSI_RESET }        // yellow
   return null
+}
+
+function extractShortAgentName(agentName: string): string {
+  const parenIndex = agentName.indexOf(" (")
+  return parenIndex >= 0 ? agentName.slice(0, parenIndex) : agentName
 }
 
 function resolveRuntimeConfig(env: NodeJS.ProcessEnv = process.env): HudRuntimeConfig {
@@ -475,6 +479,10 @@ export function buildAssistantUsageLine(input: {
   const agentTheme = input.agentName !== undefined ? resolveAgentTheme(input.agentName) : null
   const theme = agentTheme ?? resolveModelTheme(input.modelID)
 
+  const leadSegment = agentTheme && input.agentName
+    ? `${agentTheme.ansiColor}${extractShortAgentName(input.agentName)}${agentTheme.ansiReset} | ${modelLabel}`
+    : `${theme.ansiColor}${modelLabel}${theme.ansiReset}`
+
   const lowerBound5h = input.nowMs - FIVE_HOURS_MS
   const lowerBound7d = input.nowMs - SEVEN_DAYS_MS
 
@@ -525,7 +533,7 @@ export function buildAssistantUsageLine(input: {
       : `7d: ~${approxPercent7d}% (${formatDurationCompactDays(windowRemaining7dMs)})`
 
     return [
-      `${theme.emoji} ${modelLabel}`,
+      leadSegment,
       buildProgressBar(contextPercent, theme),
       `${formatPercent(contextPercent)}${warningIndicator}`,
       `${formatCompactTokens(contextUsed)}/${formatCompactTokens(contextLimit)}`,
@@ -535,9 +543,8 @@ export function buildAssistantUsageLine(input: {
     ].join(" | ")
   }
 
-  // Fallback: self-calculated approximations
   return [
-    `${theme.emoji} ${modelLabel}`,
+    leadSegment,
     buildProgressBar(contextPercent, theme),
     `${formatPercent(contextPercent)}${warningIndicator}`,
     `${formatCompactTokens(contextUsed)}/${formatCompactTokens(contextLimit)}`,

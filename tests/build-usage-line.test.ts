@@ -206,7 +206,7 @@ describe("buildAssistantUsageLine API usage", () => {
   })
 })
 
-describe("buildAssistantUsageLine model emoji indicators", () => {
+describe("buildAssistantUsageLine model color indicators", () => {
   const baseInput = {
     sessionKey: "ses_test",
     providerID: "anthropic",
@@ -217,81 +217,76 @@ describe("buildAssistantUsageLine model emoji indicators", () => {
     nowMs: 1000000000000
   }
 
-  it("shows purple emoji for Opus model", () => {
+  it("shows colored Opus model label", () => {
     const result = buildAssistantUsageLine({
       ...baseInput,
       modelID: "claude-opus-4-5-20251101"
     })
-    expect(result).toContain("🟣")
-    expect(result).toContain("Opus")
+    expect(result).toContain("\x1b[35mOpus\x1b[39m")
   })
 
-  it("shows orange emoji for Sonnet model", () => {
+  it("shows colored Sonnet model label", () => {
     const result = buildAssistantUsageLine({
       ...baseInput,
       modelID: "claude-sonnet-4-5-20251101"
     })
-    expect(result).toContain("🟠")
-    expect(result).toContain("Sonnet")
+    expect(result).toContain("\x1b[33mSonnet\x1b[39m")
   })
 
-  it("shows green emoji for Haiku model", () => {
+  it("shows colored Haiku model label", () => {
     const result = buildAssistantUsageLine({
       ...baseInput,
       modelID: "claude-haiku-4-5-20251101"
     })
-    expect(result).toContain("🟢")
-    expect(result).toContain("Haiku")
+    expect(result).toContain("\x1b[32mHaiku\x1b[39m")
   })
 
-  it("shows yellow emoji for GPT-5 model", () => {
+  it("shows colored GPT-5 model label", () => {
     const result = buildAssistantUsageLine({
       ...baseInput,
       modelID: "openai/gpt-5.3-codex"
     })
-    expect(result).toContain("🟡")
-    expect(result).toContain("GPT-5")
+    expect(result).toContain("\x1b[33mGPT-5\x1b[39m")
   })
 
-  it("shows yellow emoji for GPT-4 model", () => {
+  it("shows colored GPT-4 model label", () => {
     const result = buildAssistantUsageLine({
       ...baseInput,
       modelID: "openai/gpt-4-turbo"
     })
-    expect(result).toContain("🟡")
+    expect(result).toContain("\x1b[33m")
   })
 
-  it("shows blue emoji for Gemini model", () => {
+  it("shows colored Gemini model label", () => {
     const result = buildAssistantUsageLine({
       ...baseInput,
       modelID: "google/gemini-1.5-pro"
     })
-    expect(result).toContain("🔵")
-    expect(result).toContain("Gemini")
+    expect(result).toContain("\x1b[36mGemini\x1b[39m")
   })
 
-  it("shows brown emoji for DeepSeek model", () => {
+  it("shows colored DeepSeek model label", () => {
     const result = buildAssistantUsageLine({
       ...baseInput,
       modelID: "deepseek/deepseek-chat"
     })
-    expect(result).toContain("🟤")
+    expect(result).toContain("\x1b[34m")
   })
 
-  it("shows white emoji for unknown model", () => {
+  it("shows colored unknown model label", () => {
     const result = buildAssistantUsageLine({
       ...baseInput,
       modelID: "unknown-provider/unknown-model"
     })
-    expect(result).toContain("⚪")
+    expect(result).toContain("\x1b[37m")
   })
 
-  it("still shows model label after emoji", () => {
+  it("model label appears as first colored segment", () => {
     const result = buildAssistantUsageLine({
       ...baseInput,
       modelID: "claude-opus-4"
     })
-    expect(result).toMatch(/🟣\s+Opus/)
+    expect(result).toContain("\x1b[35mOpus\x1b[39m")
   })
 
   it("includes colored progress bar with ANSI codes", () => {
@@ -317,52 +312,72 @@ describe("buildAssistantUsageLine agent theming", () => {
     nowMs: 1000000000000
   }
 
-  it("uses Sisyphus cyan theme when agentName provided", () => {
+  it("shows colored Sisyphus name when agentName provided", () => {
     const result = buildAssistantUsageLine({ ...baseInput, agentName: "Sisyphus" })
-    expect(result).toContain("🔵")
-    expect(result).toContain("\x1b[36m")
+    expect(result).toContain("\x1b[36mSisyphus\x1b[39m")
+    expect(result).toContain("Opus")
   })
 
-  it("uses Hephaestus orange theme", () => {
+  it("shows colored Hephaestus name", () => {
     const result = buildAssistantUsageLine({ ...baseInput, agentName: "Hephaestus" })
-    expect(result).toContain("🟠")
-    expect(result).toContain("\x1b[33m")
+    expect(result).toContain("\x1b[33mHephaestus\x1b[39m")
   })
 
-  it("uses Prometheus red theme", () => {
+  it("shows colored Prometheus name", () => {
     const result = buildAssistantUsageLine({ ...baseInput, agentName: "Prometheus" })
-    expect(result).toContain("🔴")
-    expect(result).toContain("\x1b[31m")
+    expect(result).toContain("\x1b[31mPrometheus\x1b[39m")
   })
 
-  it("uses Atlas green theme", () => {
+  it("shows colored Atlas name", () => {
     const result = buildAssistantUsageLine({ ...baseInput, agentName: "Atlas" })
-    expect(result).toContain("🟢")
-    expect(result).toContain("\x1b[32m")
+    expect(result).toContain("\x1b[32mAtlas\x1b[39m")
   })
 
-  it("uses Build blue theme for vanilla opencode", () => {
+  it("shows colored Build name for vanilla opencode", () => {
     const result = buildAssistantUsageLine({ ...baseInput, agentName: "Build" })
-    expect(result).toContain("🔵")
-    expect(result).toContain("\x1b[34m")
+    expect(result).toContain("\x1b[34mBuild\x1b[39m")
   })
 
-  it("uses Plan yellow theme for vanilla opencode", () => {
+  it("shows colored Plan name for vanilla opencode", () => {
     const result = buildAssistantUsageLine({ ...baseInput, agentName: "Plan" })
-    expect(result).toContain("🟡")
-    expect(result).toContain("\x1b[33m")
+    expect(result).toContain("\x1b[33mPlan\x1b[39m")
   })
 
-  it("falls back to model theme for unknown agent", () => {
+  it("extracts short name from suffixed display name", () => {
+    const result = buildAssistantUsageLine({ ...baseInput, agentName: "Sisyphus (Ultraworker)" })
+    expect(result).toContain("\x1b[36mSisyphus\x1b[39m")
+    expect(result).not.toContain("(Ultraworker)")
+  })
+
+  it("extracts short name from Hephaestus display name", () => {
+    const result = buildAssistantUsageLine({ ...baseInput, agentName: "Hephaestus (Deep Agent)" })
+    expect(result).toContain("\x1b[33mHephaestus\x1b[39m")
+    expect(result).not.toContain("(Deep Agent)")
+  })
+
+  it("extracts short name from Prometheus display name", () => {
+    const result = buildAssistantUsageLine({ ...baseInput, agentName: "Prometheus (Plan Builder)" })
+    expect(result).toContain("\x1b[31mPrometheus\x1b[39m")
+  })
+
+  it("extracts short name from Atlas display name", () => {
+    const result = buildAssistantUsageLine({ ...baseInput, agentName: "Atlas (Plan Executor)" })
+    expect(result).toContain("\x1b[32mAtlas\x1b[39m")
+  })
+
+  it("keeps Sisyphus-Junior as full name", () => {
+    const result = buildAssistantUsageLine({ ...baseInput, agentName: "Sisyphus-Junior" })
+    expect(result).toContain("\x1b[36mSisyphus-Junior\x1b[39m")
+  })
+
+  it("falls back to colored model label for unknown agent", () => {
     const result = buildAssistantUsageLine({ ...baseInput, agentName: "UnknownAgent" })
-    expect(result).toContain("🟣")
-    expect(result).toContain("\x1b[35m")
+    expect(result).toContain("\x1b[35mOpus\x1b[39m")
   })
 
-  it("uses model theme when no agentName provided", () => {
+  it("shows colored model label when no agentName provided", () => {
     const result = buildAssistantUsageLine({ ...baseInput })
-    expect(result).toContain("🟣")
-    expect(result).toContain("\x1b[35m")
+    expect(result).toContain("\x1b[35mOpus\x1b[39m")
   })
 })
 
@@ -406,8 +421,7 @@ describe("buildAssistantUsageLine OpenAI provider snapshot", () => {
         ]
       }
     })
-    expect(result).toContain("GPT-5")
-    expect(result).toContain("🟡")
+    expect(result).toContain("\x1b[33mGPT-5\x1b[39m")
   })
 
   it("uses fallback when OpenAI snapshot has error", () => {
