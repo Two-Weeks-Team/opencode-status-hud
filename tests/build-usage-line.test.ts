@@ -1,0 +1,207 @@
+import { describe, expect, it } from "vitest"
+
+import { buildAssistantUsageLine } from "../src/plugin.js"
+
+describe("buildAssistantUsageLine API usage", () => {
+  const baseInput = {
+    sessionKey: "ses_test",
+    providerID: "anthropic",
+    modelID: "claude-opus-4",
+    contextUsedTokens: 27000,
+    contextLimitTokens: 200000,
+    usageSamples: [],
+    nowMs: 1000000000000
+  }
+
+  it("uses fallback with ~ prefix when apiUsage is null", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      apiUsage: null
+    })
+    expect(result).toContain("5h: ~")
+    expect(result).toContain("7d: ~")
+  })
+
+  it("uses fallback with ~ prefix when apiUsage is undefined", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      apiUsage: undefined
+    })
+    expect(result).toContain("5h: ~")
+    expect(result).toContain("7d: ~")
+  })
+
+  it("uses fallback when apiUsage has error", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      apiUsage: {
+        provider: "anthropic",
+        fetchedAtMs: baseInput.nowMs,
+        windows: [],
+        error: "Network error"
+      }
+    })
+    expect(result).toContain("5h: ~")
+    expect(result).toContain("7d: ~")
+  })
+
+  it("uses real 5h % and approx 7d when only 5h window present", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      apiUsage: {
+        provider: "anthropic",
+        fetchedAtMs: baseInput.nowMs,
+        windows: [
+          { label: "5h", usedPercent: 25, resetAtMs: baseInput.nowMs + 4 * 60 * 60 * 1000 }
+        ]
+      }
+    })
+    expect(result).toContain("5h: 25%")
+    expect(result).not.toContain("5h: ~")
+    expect(result).toContain("7d: ~")
+  })
+
+  it("uses approx 5h and real 7d % when only 7d window present", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      apiUsage: {
+        provider: "anthropic",
+        fetchedAtMs: baseInput.nowMs,
+        windows: [
+          { label: "7d", usedPercent: 10, resetAtMs: baseInput.nowMs + 3 * 24 * 60 * 60 * 1000 }
+        ]
+      }
+    })
+    expect(result).toContain("5h: ~")
+    expect(result).toContain("7d: 10%")
+    expect(result).not.toContain("7d: ~")
+  })
+
+  it("uses real percentages for both windows when both present", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      apiUsage: {
+        provider: "anthropic",
+        fetchedAtMs: baseInput.nowMs,
+        windows: [
+          { label: "5h", usedPercent: 30, resetAtMs: baseInput.nowMs + 4 * 60 * 60 * 1000 },
+          { label: "7d", usedPercent: 15, resetAtMs: baseInput.nowMs + 3 * 24 * 60 * 60 * 1000 }
+        ]
+      }
+    })
+    expect(result).toContain("5h: 30%")
+    expect(result).toContain("7d: 15%")
+    expect(result).not.toContain("~")
+  })
+
+  it("formats 5h reset within 24h as duration", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      apiUsage: {
+        provider: "anthropic",
+        fetchedAtMs: baseInput.nowMs,
+        windows: [
+          { label: "5h", usedPercent: 50, resetAtMs: baseInput.nowMs + 4 * 60 * 60 * 1000 + 22 * 60 * 1000 }
+        ]
+      }
+    })
+    expect(result).toContain("5h: 50%")
+    expect(result).toContain("4h 22m")
+  })
+
+  it("formats 5h reset >24h away as weekday", () => {
+    const resetAt = new Date("2024-06-10T14:30:00Z").getTime()
+    const nowMs = new Date("2024-06-08T10:00:00Z").getTime()
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      nowMs,
+      apiUsage: {
+        provider: "anthropic",
+        fetchedAtMs: nowMs,
+        windows: [
+          { label: "5h", usedPercent: 75, resetAtMs: resetAt }
+        ]
+      }
+    })
+    expect(result).toContain("5h: 75%")
+    expect(result).toMatch(/Mon \d{2}:\d{2}/)
+  })
+
+  it("formats 7d reset always as weekday + time", () => {
+    const resetAt = new Date("2024-06-15T09:45:00Z").getTime()
+    const nowMs = new Date("2024-06-08T10:00:00Z").getTime()
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      nowMs,
+      apiUsage: {
+        provider: "anthropic",
+        fetchedAtMs: nowMs,
+        windows: [
+          { label: "7d", usedPercent: 20, resetAtMs: resetAt }
+        ]
+      }
+    })
+    expect(result).toContain("7d: 20%")
+    expect(result).toMatch(/Sat \d{2}:\d{2}/)
+  })
+
+  it("shows ? for undefined resetAtMs", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      apiUsage: {
+        provider: "anthropic",
+        fetchedAtMs: baseInput.nowMs,
+        windows: [
+          { label: "5h", usedPercent: 40 },
+          { label: "7d", usedPercent: 10 }
+        ]
+      }
+    })
+    expect(result).toContain("5h: 40% (?)")
+    expect(result).toContain("7d: 10% (?)")
+  })
+
+  it("shows 'now' for reset in the past", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      apiUsage: {
+        provider: "anthropic",
+        fetchedAtMs: baseInput.nowMs,
+        windows: [
+          { label: "5h", usedPercent: 80, resetAtMs: baseInput.nowMs - 60 * 1000 }
+        ]
+      }
+    })
+    expect(result).toContain("5h: 80% (now)")
+  })
+
+  it("handles zero percent correctly", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      apiUsage: {
+        provider: "anthropic",
+        fetchedAtMs: baseInput.nowMs,
+        windows: [
+          { label: "5h", usedPercent: 0, resetAtMs: baseInput.nowMs + 60 * 60 * 1000 }
+        ]
+      }
+    })
+    expect(result).toContain("5h: 0%")
+  })
+
+  it("handles both windows with undefined resetAtMs", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      apiUsage: {
+        provider: "anthropic",
+        fetchedAtMs: baseInput.nowMs,
+        windows: [
+          { label: "5h", usedPercent: 12 },
+          { label: "7d", usedPercent: 8 }
+        ]
+      }
+    })
+    expect(result).toContain("5h: 12% (?)")
+    expect(result).toContain("7d: 8% (?)")
+  })
+})
