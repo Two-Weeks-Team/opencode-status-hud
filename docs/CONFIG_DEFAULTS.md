@@ -9,8 +9,10 @@
 ## Emission Defaults
 
 - Coexistence mode: `toast-only`
-- Coexistence verbosity: `low`
+- Coexistence verbosity: `normal`
 - Prompt fallback profile: `minimal`
+- Usage display: `output`
+- Usage prompt interval: `10000ms`
 
 ## Safety Defaults
 

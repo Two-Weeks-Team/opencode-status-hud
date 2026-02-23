@@ -27,6 +27,8 @@ opencode
 ```
 
 After installation, HUD runs as an OpenCode plugin during normal `opencode` sessions.
+Default install mode uses `~/.config/opencode/plugins/` (local plugin shim) to avoid `opencode.json` plugin-array conflicts.
+Default runtime appends HUD usage metadata to assistant output messages (no env variable setup required).
 
 ### For LLM
 
