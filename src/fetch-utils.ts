@@ -1,4 +1,4 @@
-import type { ProviderUsageSnapshot } from "./provider-usage.types.js"
+import type { ProviderUsageSnapshot, ProviderKey } from "./provider-usage.types.js"
 
 export const DEFAULT_TIMEOUT_MS = 5000
 
@@ -81,12 +81,13 @@ export async function fetchJson(
  * Build an error ProviderUsageSnapshot for cache storage.
  */
 export function buildErrorSnapshot(options: {
+  provider?: ProviderKey | undefined
   status: number
   message?: string | undefined
   fetchedAtMs: number
 }): ProviderUsageSnapshot {
   return {
-    provider: "anthropic",
+    provider: options.provider ?? "anthropic",
     fetchedAtMs: options.fetchedAtMs,
     windows: [],
     error: options.message ?? `HTTP ${options.status}`

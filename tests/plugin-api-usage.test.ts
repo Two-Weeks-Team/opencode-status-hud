@@ -408,3 +408,233 @@ describe("plugin API usage integration", () => {
     expect(mockPollingManager.start).not.toHaveBeenCalled()
   })
 })
+
+describe("provider key resolution", () => {
+  const baseRuntimeConfig = {
+    channelMode: "toast-only" as const,
+    verbosity: "normal" as const,
+    promptProfile: "minimal" as const,
+    usageDisplay: "output" as const,
+    usagePromptIntervalMs: 0
+  }
+
+  function createMockPollingManager(snapshot: ProviderUsageSnapshot | null = null) {
+    return {
+      start: vi.fn(),
+      stop: vi.fn(),
+      latest: vi.fn(() => snapshot),
+      forceRefresh: vi.fn(async () => snapshot),
+      isRunning: vi.fn(() => false)
+    }
+  }
+
+  it("HUD line picks Anthropic snapshot via override when model is Claude", async () => {
+    const anthropicSnapshot: ProviderUsageSnapshot = {
+      provider: "anthropic",
+      fetchedAtMs: Date.now(),
+      windows: [
+        { label: "5h", usedPercent: 33, resetAtMs: Date.now() + 3 * 60 * 60 * 1000 },
+        { label: "7d", usedPercent: 12, resetAtMs: Date.now() + 4 * 24 * 60 * 60 * 1000 }
+      ]
+    }
+
+    const mockPollingManager = createMockPollingManager(anthropicSnapshot)
+
+    const hooks = createHudPluginHooks(
+      {
+        directory: "/tmp/project",
+        tuiClient: {
+          showToast: () => undefined,
+          appendPrompt: () => undefined
+        }
+      },
+      baseRuntimeConfig,
+      { pollingManagerOverride: mockPollingManager }
+    )
+
+    await hooks.event?.({
+      event: {
+        type: "message.updated",
+        properties: {
+          info: {
+            id: "msg_claude_override",
+            sessionID: "ses_claude_override",
+            role: "assistant",
+            time: { created: 1000, completed: 1200 },
+            parentID: "msg_user_1",
+            modelID: "claude-opus-4",
+            providerID: "anthropic",
+            mode: "primary",
+            path: { cwd: "/tmp/project", root: "/tmp/project" },
+            cost: 0.01,
+            tokens: { input: 100, output: 50, reasoning: 0, cache: { read: 0, write: 0 } }
+          }
+        }
+      }
+    })
+
+    const output = { text: "assistant result" }
+    await hooks["experimental.text.complete"]?.(
+      {
+        sessionID: "ses_claude_override",
+        messageID: "msg_claude_override",
+        partID: "part_1"
+      },
+      output
+    )
+
+    expect(output.text).toContain("5h: 33%")
+    expect(output.text).toContain("7d: 12%")
+  })
+
+  it("HUD line falls back for OpenAI when no snapshot available", async () => {
+    const mockPollingManager = createMockPollingManager(null)
+
+    const hooks = createHudPluginHooks(
+      {
+        directory: "/tmp/project",
+        tuiClient: {
+          showToast: () => undefined,
+          appendPrompt: () => undefined
+        }
+      },
+      baseRuntimeConfig,
+      { pollingManagerOverride: mockPollingManager }
+    )
+
+    await hooks.event?.({
+      event: {
+        type: "message.updated",
+        properties: {
+          info: {
+            id: "msg_gpt_fallback",
+            sessionID: "ses_gpt_fallback",
+            role: "assistant",
+            time: { created: 1000, completed: 1200 },
+            parentID: "msg_user_1",
+            modelID: "openai/gpt-5",
+            providerID: "openai",
+            mode: "primary",
+            path: { cwd: "/tmp/project", root: "/tmp/project" },
+            cost: 0.01,
+            tokens: { input: 100, output: 50, reasoning: 0, cache: { read: 0, write: 0 } }
+          }
+        }
+      }
+    })
+
+    const output = { text: "assistant result" }
+    await hooks["experimental.text.complete"]?.(
+      {
+        sessionID: "ses_gpt_fallback",
+        messageID: "msg_gpt_fallback",
+        partID: "part_1"
+      },
+      output
+    )
+
+    expect(output.text).toContain("5h: ~")
+    expect(output.text).toContain("7d: ~")
+    expect(output.text).toContain("GPT-5")
+  })
+
+  it("HUD line uses fallback when provider is unknown", async () => {
+    const mockPollingManager = createMockPollingManager(null)
+
+    const hooks = createHudPluginHooks(
+      {
+        directory: "/tmp/project",
+        tuiClient: {
+          showToast: () => undefined,
+          appendPrompt: () => undefined
+        }
+      },
+      baseRuntimeConfig,
+      { pollingManagerOverride: mockPollingManager }
+    )
+
+    await hooks.event?.({
+      event: {
+        type: "message.updated",
+        properties: {
+          info: {
+            id: "msg_unknown",
+            sessionID: "ses_unknown",
+            role: "assistant",
+            time: { created: 1000, completed: 1200 },
+            parentID: "msg_user_1",
+            modelID: "unknown-provider/unknown-model",
+            providerID: "unknown-provider",
+            mode: "primary",
+            path: { cwd: "/tmp/project", root: "/tmp/project" },
+            cost: 0.01,
+            tokens: { input: 100, output: 50, reasoning: 0, cache: { read: 0, write: 0 } }
+          }
+        }
+      }
+    })
+
+    const output = { text: "assistant result" }
+    await hooks["experimental.text.complete"]?.(
+      {
+        sessionID: "ses_unknown",
+        messageID: "msg_unknown",
+        partID: "part_1"
+      },
+      output
+    )
+
+    expect(output.text).toContain("5h: ~")
+    expect(output.text).toContain("7d: ~")
+  })
+
+  it("output text includes dim ANSI codes", async () => {
+    const mockPollingManager = createMockPollingManager(null)
+
+    const hooks = createHudPluginHooks(
+      {
+        directory: "/tmp/project",
+        tuiClient: {
+          showToast: () => undefined,
+          appendPrompt: () => undefined
+        }
+      },
+      baseRuntimeConfig,
+      { pollingManagerOverride: mockPollingManager }
+    )
+
+    await hooks.event?.({
+      event: {
+        type: "message.updated",
+        properties: {
+          info: {
+            id: "msg_dim",
+            sessionID: "ses_dim",
+            role: "assistant",
+            time: { created: 1000, completed: 1200 },
+            parentID: "msg_user_1",
+            modelID: "claude-opus-4",
+            providerID: "anthropic",
+            mode: "primary",
+            path: { cwd: "/tmp/project", root: "/tmp/project" },
+            cost: 0.01,
+            tokens: { input: 100, output: 50, reasoning: 0, cache: { read: 0, write: 0 } }
+          }
+        }
+      }
+    })
+
+    const output = { text: "assistant result" }
+    await hooks["experimental.text.complete"]?.(
+      {
+        sessionID: "ses_dim",
+        messageID: "msg_dim",
+        partID: "part_1"
+      },
+      output
+    )
+
+    expect(output.text).toContain("\x1b[2m")
+    expect(output.text).toContain("\x1b[22m")
+  })
+})

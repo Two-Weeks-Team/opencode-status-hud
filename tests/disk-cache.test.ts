@@ -61,7 +61,7 @@ describe("disk-cache", () => {
     const cache = createDiskCache({ cachePath })
 
     const testData: DiskCacheData = {
-      version: 2,
+      version: 3,
       lastFetchMs: Date.now(),
       samples: [
         {
@@ -85,7 +85,7 @@ describe("disk-cache", () => {
           limit: { context: 200000, output: 16384 }
         }
       ],
-      providerUsage: undefined
+      providerUsages: undefined
     }
 
     await cache.save(testData)
@@ -101,11 +101,11 @@ describe("disk-cache", () => {
     const cache = createDiskCache({ cachePath })
 
     const testData: DiskCacheData = {
-      version: 2,
+      version: 3,
       lastFetchMs: 123456,
       samples: [],
       modelRegistry: [],
-      providerUsage: undefined
+      providerUsages: undefined
     }
 
     await cache.save(testData)
@@ -120,11 +120,11 @@ describe("disk-cache", () => {
     const cache = createDiskCache({ cachePath })
 
     const testData: DiskCacheData = {
-      version: 2,
+      version: 3,
       lastFetchMs: 789012,
       samples: [],
       modelRegistry: [],
-      providerUsage: undefined
+      providerUsages: undefined
     }
 
     await cache.save(testData)
@@ -132,7 +132,7 @@ describe("disk-cache", () => {
     // Verify the file exists and is valid JSON (atomic write completed)
     const content = await readFile(cachePath, "utf-8")
     const parsed = JSON.parse(content)
-    expect(parsed.version).toBe(2)
+    expect(parsed.version).toBe(3)
     expect(parsed.lastFetchMs).toBe(789012)
   })
 
@@ -162,83 +162,6 @@ describe("disk-cache", () => {
     const result = await cache.load()
 
     expect(result).toBeNull()
-  })
-
-  it("v1 to v2 migration: load migrates v1 file to v2", async () => {
-    testDir = await createTempDir()
-    const cachePath = join(testDir, "cache.json")
-
-    // Write raw v1 data manually (not via the typed interface)
-    const v1Data = {
-      version: 1,
-      lastFetchMs: 123456,
-      samples: [{ messageID: "msg_1", sessionKey: "ses_1", completedMs: 1000, contextUsedTokens: 5000, cost: 0.05 }],
-      modelRegistry: [{ providerID: "anthropic", modelID: "claude-sonnet-4", cost: { input: 0.000003, output: 0.000015, cacheRead: 0.0000003, cacheWrite: 0.00000375 }, limit: { context: 200000, output: 16384 } }]
-    }
-    await mkdir(testDir, { recursive: true })
-    await writeFile(cachePath, JSON.stringify(v1Data))
-
-    const cache = createDiskCache({ cachePath })
-    const loaded = await cache.load()
-
-    expect(loaded).not.toBeNull()
-    expect(loaded?.version).toBe(2)
-    expect(loaded?.providerUsage).toBeUndefined()
-    expect(loaded?.lastFetchMs).toBe(123456)
-    expect(loaded?.samples).toEqual(v1Data.samples)
-    expect(loaded?.modelRegistry).toEqual(v1Data.modelRegistry)
-  })
-
-  it("v2 roundtrip with providerUsage preserves data", async () => {
-    testDir = await createTempDir()
-    const cachePath = join(testDir, "cache.json")
-    const cache = createDiskCache({ cachePath })
-
-    const testData: DiskCacheData = {
-      version: 2,
-      lastFetchMs: 123456,
-      samples: [],
-      modelRegistry: [],
-      providerUsage: {
-        provider: "anthropic",
-        fetchedAtMs: 123456789,
-        windows: [
-          { label: "5h", usedPercent: 50, resetAtMs: 1234567890 },
-          { label: "7d", usedPercent: 25 }
-        ],
-        extraUsage: {
-          enabled: true,
-          monthlyLimitCents: 10000,
-          usedCents: 5000,
-          utilization: 50,
-          currency: "USD"
-        }
-      }
-    }
-
-    await cache.save(testData)
-    const loaded = await cache.load()
-
-    expect(loaded).toEqual(testData)
-  })
-
-  it("v2 roundtrip without providerUsage preserves data", async () => {
-    testDir = await createTempDir()
-    const cachePath = join(testDir, "cache.json")
-    const cache = createDiskCache({ cachePath })
-
-    const testData: DiskCacheData = {
-      version: 2,
-      lastFetchMs: 789012,
-      samples: [],
-      modelRegistry: [],
-      providerUsage: undefined
-    }
-
-    await cache.save(testData)
-    const loaded = await cache.load()
-
-    expect(loaded).toEqual(testData)
   })
 
   it("v1 migration preserves samples and modelRegistry unchanged", async () => {
@@ -273,17 +196,17 @@ describe("disk-cache", () => {
     expect(loaded?.modelRegistry === v1Registry).toBe(false)
   })
 
-  it("save always writes version 2", async () => {
+  it("save always writes version 3", async () => {
     testDir = await createTempDir()
     const cachePath = join(testDir, "cache.json")
     const cache = createDiskCache({ cachePath })
 
     const testData: DiskCacheData = {
-      version: 2,
+      version: 3,
       lastFetchMs: 123456,
       samples: [],
       modelRegistry: [],
-      providerUsage: undefined
+      providerUsages: undefined
     }
 
     await cache.save(testData)
@@ -291,19 +214,20 @@ describe("disk-cache", () => {
     // Read raw file content to verify version
     const content = await readFile(cachePath, "utf-8")
     const parsed = JSON.parse(content)
-    expect(parsed.version).toBe(2)
-    expect(parsed.providerUsage).toBeUndefined()
+    expect(parsed.version).toBe(3)
+    expect(parsed.providerUsages).toBeUndefined()
   })
 
-  it("v1 with empty arrays migrates correctly", async () => {
+  it("v1 to v3 migration: load migrates v1 file to v3", async () => {
     testDir = await createTempDir()
     const cachePath = join(testDir, "cache.json")
 
+    // Write raw v1 data manually (not via the typed interface)
     const v1Data = {
       version: 1,
-      lastFetchMs: 0,
-      samples: [],
-      modelRegistry: []
+      lastFetchMs: 123456,
+      samples: [{ messageID: "msg_1", sessionKey: "ses_1", completedMs: 1000, contextUsedTokens: 5000, cost: 0.05 }],
+      modelRegistry: [{ providerID: "anthropic", modelID: "claude-sonnet-4", cost: { input: 0.000003, output: 0.000015, cacheRead: 0.0000003, cacheWrite: 0.00000375 }, limit: { context: 200000, output: 16384 } }]
     }
     await mkdir(testDir, { recursive: true })
     await writeFile(cachePath, JSON.stringify(v1Data))
@@ -311,10 +235,143 @@ describe("disk-cache", () => {
     const cache = createDiskCache({ cachePath })
     const loaded = await cache.load()
 
-    expect(loaded?.version).toBe(2)
-    expect(loaded?.lastFetchMs).toBe(0)
-    expect(loaded?.samples).toEqual([])
-    expect(loaded?.modelRegistry).toEqual([])
-    expect(loaded?.providerUsage).toBeUndefined()
+    expect(loaded).not.toBeNull()
+    expect(loaded?.version).toBe(3)
+    expect(loaded?.providerUsages).toBeUndefined()
+    expect(loaded?.lastFetchMs).toBe(123456)
+    expect(loaded?.samples).toEqual(v1Data.samples)
+    expect(loaded?.modelRegistry).toEqual(v1Data.modelRegistry)
+  })
+
+  it("v2 to v3 migration: providerUsage moves to providerUsages.anthropic", async () => {
+    testDir = await createTempDir()
+    const cachePath = join(testDir, "cache.json")
+
+    // Write raw v2 data with providerUsage
+    const v2Data = {
+      version: 2,
+      lastFetchMs: 123456,
+      samples: [],
+      modelRegistry: [],
+      providerUsage: {
+        provider: "anthropic",
+        fetchedAtMs: 123456789,
+        windows: [
+          { label: "5h", usedPercent: 50, resetAtMs: 1234567890 },
+          { label: "7d", usedPercent: 25 }
+        ],
+        extraUsage: {
+          enabled: true,
+          monthlyLimitCents: 10000,
+          usedCents: 5000,
+          utilization: 50,
+          currency: "USD"
+        }
+      }
+    }
+    await mkdir(testDir, { recursive: true })
+    await writeFile(cachePath, JSON.stringify(v2Data))
+
+    const cache = createDiskCache({ cachePath })
+    const loaded = await cache.load()
+
+    expect(loaded).not.toBeNull()
+    expect(loaded?.version).toBe(3)
+    expect(loaded?.providerUsages?.anthropic).toEqual(v2Data.providerUsage)
+    expect(loaded?.providerUsages?.openai).toBeUndefined()
+  })
+
+  it("v2 to v3 migration: v2 without providerUsage keeps undefined providerUsages", async () => {
+    testDir = await createTempDir()
+    const cachePath = join(testDir, "cache.json")
+
+    // Write raw v2 data without providerUsage
+    const v2Data = {
+      version: 2,
+      lastFetchMs: 123456,
+      samples: [],
+      modelRegistry: []
+    }
+    await mkdir(testDir, { recursive: true })
+    await writeFile(cachePath, JSON.stringify(v2Data))
+
+    const cache = createDiskCache({ cachePath })
+    const loaded = await cache.load()
+
+    expect(loaded).not.toBeNull()
+    expect(loaded?.version).toBe(3)
+    expect(loaded?.providerUsages).toBeUndefined()
+  })
+
+  it("v3 roundtrip with multiple providers preserves data", async () => {
+    testDir = await createTempDir()
+    const cachePath = join(testDir, "cache.json")
+    const cache = createDiskCache({ cachePath })
+
+    const testData: DiskCacheData = {
+      version: 3,
+      lastFetchMs: 123456,
+      samples: [],
+      modelRegistry: [],
+      providerUsages: {
+        anthropic: {
+          provider: "anthropic",
+          fetchedAtMs: 123456789,
+          windows: [
+            { label: "5h", usedPercent: 50, resetAtMs: 1234567890 }
+          ]
+        },
+        openai: {
+          provider: "openai",
+          fetchedAtMs: 987654321,
+          windows: [
+            { label: "5h", usedPercent: 30, resetAtMs: 9876543210 }
+          ]
+        }
+      }
+    }
+
+    await cache.save(testData)
+    const loaded = await cache.load()
+
+    expect(loaded).toEqual(testData)
+  })
+
+  it("v3 roundtrip with empty providerUsages preserves data", async () => {
+    testDir = await createTempDir()
+    const cachePath = join(testDir, "cache.json")
+    const cache = createDiskCache({ cachePath })
+
+    const testData: DiskCacheData = {
+      version: 3,
+      lastFetchMs: 123456,
+      samples: [],
+      modelRegistry: [],
+      providerUsages: {}
+    }
+
+    await cache.save(testData)
+    const loaded = await cache.load()
+
+    expect(loaded).toEqual(testData)
+  })
+
+  it("v3 roundtrip without providerUsages preserves data", async () => {
+    testDir = await createTempDir()
+    const cachePath = join(testDir, "cache.json")
+    const cache = createDiskCache({ cachePath })
+
+    const testData: DiskCacheData = {
+      version: 3,
+      lastFetchMs: 123456,
+      samples: [],
+      modelRegistry: [],
+      providerUsages: undefined
+    }
+
+    await cache.save(testData)
+    const loaded = await cache.load()
+
+    expect(loaded).toEqual(testData)
   })
 })

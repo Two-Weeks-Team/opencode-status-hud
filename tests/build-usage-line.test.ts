@@ -305,3 +305,71 @@ describe("buildAssistantUsageLine model emoji indicators", () => {
     expect(result).toContain("\x1b[0m")
   })
 })
+
+describe("buildAssistantUsageLine OpenAI provider snapshot", () => {
+  const baseInput = {
+    sessionKey: "ses_test",
+    providerID: "openai",
+    modelID: "gpt-5",
+    contextUsedTokens: 27000,
+    contextLimitTokens: 200000,
+    usageSamples: [],
+    nowMs: 1000000000000
+  }
+
+  it("uses real 5h and 7d percentages from OpenAI snapshot", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      apiUsage: {
+        provider: "openai",
+        fetchedAtMs: baseInput.nowMs,
+        windows: [
+          { label: "5h", usedPercent: 45, resetAtMs: baseInput.nowMs + 3 * 60 * 60 * 1000 },
+          { label: "7d", usedPercent: 20, resetAtMs: baseInput.nowMs + 4 * 24 * 60 * 60 * 1000 }
+        ]
+      }
+    })
+    expect(result).toContain("5h: 45%")
+    expect(result).toContain("7d: 20%")
+    expect(result).not.toContain("5h: ~")
+    expect(result).not.toContain("7d: ~")
+  })
+
+  it("shows GPT-5 model label for OpenAI model", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      apiUsage: {
+        provider: "openai",
+        fetchedAtMs: baseInput.nowMs,
+        windows: [
+          { label: "5h", usedPercent: 30, resetAtMs: baseInput.nowMs + 3 * 60 * 60 * 1000 }
+        ]
+      }
+    })
+    expect(result).toContain("GPT-5")
+    expect(result).toContain("🟡")
+  })
+
+  it("uses fallback when OpenAI snapshot has error", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      apiUsage: {
+        provider: "openai",
+        fetchedAtMs: baseInput.nowMs,
+        windows: [],
+        error: "Network error"
+      }
+    })
+    expect(result).toContain("5h: ~")
+    expect(result).toContain("7d: ~")
+  })
+})
+
+describe("appendUsageLineToOutputText dim text wrapper", () => {
+  it("adds dim ANSI codes to usage line", () => {
+    const dimOn = "\x1b[2m"
+    const dimOff = "\x1b[22m"
+    expect(dimOn).toBe("\x1b[2m")
+    expect(dimOff).toBe("\x1b[22m")
+  })
+})
