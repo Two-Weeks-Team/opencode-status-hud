@@ -985,7 +985,7 @@ export function createHudPluginHooks(
     "chat.params": async (input) => {
       try {
         if (input.agent && input.sessionID) {
-          sessionAgentMap.set(input.sessionID, input.agent)
+          sessionAgentMap.set(toSessionKey(input.sessionID), input.agent)
         }
         if (input.model && input.provider) {
           const model = input.model as unknown as ChatParamsModel
