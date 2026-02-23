@@ -205,3 +205,103 @@ describe("buildAssistantUsageLine API usage", () => {
     expect(result).toContain("7d: 8% (?)")
   })
 })
+
+describe("buildAssistantUsageLine model emoji indicators", () => {
+  const baseInput = {
+    sessionKey: "ses_test",
+    providerID: "anthropic",
+    modelID: "claude-opus-4",
+    contextUsedTokens: 27000,
+    contextLimitTokens: 200000,
+    usageSamples: [],
+    nowMs: 1000000000000
+  }
+
+  it("shows purple emoji for Opus model", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      modelID: "claude-opus-4-5-20251101"
+    })
+    expect(result).toContain("🟣")
+    expect(result).toContain("Opus")
+  })
+
+  it("shows orange emoji for Sonnet model", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      modelID: "claude-sonnet-4-5-20251101"
+    })
+    expect(result).toContain("🟠")
+    expect(result).toContain("Sonnet")
+  })
+
+  it("shows green emoji for Haiku model", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      modelID: "claude-haiku-4-5-20251101"
+    })
+    expect(result).toContain("🟢")
+    expect(result).toContain("Haiku")
+  })
+
+  it("shows yellow emoji for GPT-5 model", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      modelID: "openai/gpt-5.3-codex"
+    })
+    expect(result).toContain("🟡")
+    expect(result).toContain("GPT-5")
+  })
+
+  it("shows yellow emoji for GPT-4 model", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      modelID: "openai/gpt-4-turbo"
+    })
+    expect(result).toContain("🟡")
+  })
+
+  it("shows blue emoji for Gemini model", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      modelID: "google/gemini-1.5-pro"
+    })
+    expect(result).toContain("🔵")
+    expect(result).toContain("Gemini")
+  })
+
+  it("shows brown emoji for DeepSeek model", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      modelID: "deepseek/deepseek-chat"
+    })
+    expect(result).toContain("🟤")
+  })
+
+  it("shows white emoji for unknown model", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      modelID: "unknown-provider/unknown-model"
+    })
+    expect(result).toContain("⚪")
+  })
+
+  it("still shows model label after emoji", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      modelID: "claude-opus-4"
+    })
+    expect(result).toMatch(/🟣\s+Opus/)
+  })
+
+  it("includes colored progress bar with ANSI codes", () => {
+    const result = buildAssistantUsageLine({
+      ...baseInput,
+      modelID: "claude-opus-4",
+      contextUsedTokens: 50000,
+      contextLimitTokens: 100000
+    })
+    expect(result).toContain("\x1b[35m")
+    expect(result).toContain("\x1b[0m")
+  })
+})
