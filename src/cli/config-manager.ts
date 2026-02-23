@@ -52,7 +52,7 @@ async function exists(filePath: string): Promise<boolean> {
   }
 }
 
-function resolveGlobalConfigDir(env: NodeJS.ProcessEnv, homeDir: string, platform: NodeJS.Platform): string {
+export function resolveGlobalConfigDir(env: NodeJS.ProcessEnv, homeDir: string, platform: NodeJS.Platform): string {
   if (env.XDG_CONFIG_HOME && env.XDG_CONFIG_HOME.length > 0) {
     return path.join(env.XDG_CONFIG_HOME, "opencode")
   }
@@ -63,6 +63,13 @@ function resolveGlobalConfigDir(env: NodeJS.ProcessEnv, homeDir: string, platfor
   }
 
   return path.join(homeDir, ".config", "opencode")
+}
+
+export function resolveGlobalPluginDir(options: ResolveConfigPathOptions = {}): string {
+  const env = options.env ?? process.env
+  const homeDir = options.homeDir ?? os.homedir()
+  const platform = options.platform ?? process.platform
+  return path.join(resolveGlobalConfigDir(env, homeDir, platform), "plugins")
 }
 
 export async function resolveConfigPath(options: ResolveConfigPathOptions = {}): Promise<ResolveConfigPathResult> {

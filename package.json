@@ -1,15 +1,40 @@
 {
   "name": "opencode-status-hud",
   "version": "0.1.0",
-  "private": true,
   "description": "Bootstrap package skeleton for OpenCode HUD implementation",
   "type": "module",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "bin": {
+    "opencode-status-hud": "bin/opencode-status-hud.js"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "docs/guide/installation.md",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    },
+    "./api": {
+      "types": "./dist/src/api.d.ts",
+      "import": "./dist/src/api.js"
+    }
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "npm run typecheck",
     "test": "vitest run",
     "build": "tsc -p tsconfig.build.json",
-    "ci": "npm run lint && npm run test && npm run build"
+    "verify:tmux": "bash scripts/verify-tmux-runtime.sh",
+    "ci": "npm run lint && npm run test && npm run build",
+    "prepublishOnly": "npm run ci"
   },
   "devDependencies": {
     "@types/node": "22.13.10",
@@ -17,6 +42,7 @@
     "vitest": "3.0.9"
   },
   "dependencies": {
+    "@opencode-ai/plugin": "^1.2.10",
     "jsonc-parser": "^3.3.1"
   }
 }

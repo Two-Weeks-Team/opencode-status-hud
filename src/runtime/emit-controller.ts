@@ -96,7 +96,7 @@ function formatToastPayload(transition: HudTransition): ShowToastPayload {
             : `${safeLabel} completed in ${transition.durationMs}ms`,
           maxMessageLength
         ),
-        variant: "info"
+        variant: "neutral"
       }
     case "idle":
       return {

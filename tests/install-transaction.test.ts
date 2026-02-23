@@ -107,6 +107,34 @@ describe("installHudPluginTransaction", () => {
     expect(parsed.plugin).toEqual(["legacy", "opencode-status-hud"])
   })
 
+  it("preserves oh-my-opencode and plugin ordering while appending HUD", async () => {
+    const root = await createTempDir("hud-install-transaction-")
+    const configPath = path.join(root, "opencode.json")
+
+    await fs.writeFile(
+      configPath,
+      JSON.stringify(
+        {
+          plugin: ["oh-my-opencode", "opencode-antigravity-auth@1.6.0", "opencode-gemini-auth@latest"]
+        },
+        null,
+        2
+      ),
+      "utf8"
+    )
+
+    const result = await installHudPluginTransaction({ configPath })
+    expectInstallInstalled(result)
+
+    const updated = JSON.parse(await fs.readFile(configPath, "utf8")) as { plugin?: string[] }
+    expect(updated.plugin).toEqual([
+      "oh-my-opencode",
+      "opencode-antigravity-auth@1.6.0",
+      "opencode-gemini-auth@latest",
+      "opencode-status-hud"
+    ])
+  })
+
   it("restores from existing backup when config becomes missing during failure", async () => {
     const root = await createTempDir("hud-install-transaction-")
     const configPath = path.join(root, "opencode.json")
