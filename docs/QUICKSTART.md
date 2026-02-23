@@ -20,6 +20,8 @@ node ./bin/opencode-status-hud.js resolve-config
 node ./bin/opencode-status-hud.js uninstall
 ```
 
+Installed as plugin, runtime activates when you run `opencode`.
+
 ## Validation Commands
 
 ```bash
@@ -48,7 +50,7 @@ import {
   parseIncomingEvent,
   reduceHudState,
   emitToastOnStateTransition
-} from "./src/index.js"
+} from "./src/api.js"
 
 let state = createInitialHudState()
 let emitState = createInitialEmitControllerState(0)

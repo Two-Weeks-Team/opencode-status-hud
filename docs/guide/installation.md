@@ -20,13 +20,19 @@ opencode-status-hud --help
 opencode-status-hud install
 ```
 
-4. Optional: confirm which config file is being targeted:
+4. Start OpenCode normally (plugin autoload):
+
+```bash
+opencode
+```
+
+5. Optional: confirm which config file is being targeted:
 
 ```bash
 opencode-status-hud resolve-config
 ```
 
-5. Optional: uninstall safely:
+6. Optional: uninstall safely:
 
 ```bash
 opencode-status-hud uninstall

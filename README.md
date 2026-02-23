@@ -23,7 +23,10 @@ Or run directly after install:
 ```bash
 npm install -g opencode-status-hud
 opencode-status-hud install
+opencode
 ```
+
+After installation, HUD runs as an OpenCode plugin during normal `opencode` sessions.
 
 ### For LLM
 
