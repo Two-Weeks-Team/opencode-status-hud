@@ -370,12 +370,12 @@ function resolveModelTheme(modelID: string): ModelTheme {
 function resolveAgentTheme(agentName: unknown): ModelTheme | null {
   if (typeof agentName !== "string") return null
   const lower = agentName.toLowerCase()
-  if (lower === "sisyphus") return { emoji: "\uD83D\uDD35", ansiColor: "\x1b[36m", ansiReset: ANSI_RESET }    // 🔵 cyan
-  if (lower === "hephaestus") return { emoji: "\uD83D\uDFE0", ansiColor: "\x1b[33m", ansiReset: ANSI_RESET }  // 🟠 orange/yellow
-  if (lower === "prometheus") return { emoji: "\uD83D\uDD34", ansiColor: "\x1b[31m", ansiReset: ANSI_RESET }  // 🔴 red
-  if (lower === "atlas") return { emoji: "\uD83D\uDFE2", ansiColor: "\x1b[32m", ansiReset: ANSI_RESET }       // 🟢 green
-  if (lower === "build") return { emoji: "\uD83D\uDD35", ansiColor: "\x1b[34m", ansiReset: ANSI_RESET }       // 🔵 blue
-  if (lower === "plan") return { emoji: "\uD83D\uDFE1", ansiColor: "\x1b[33m", ansiReset: ANSI_RESET }        // 🟡 yellow
+  if (lower.startsWith("sisyphus")) return { emoji: "\uD83D\uDD35", ansiColor: "\x1b[36m", ansiReset: ANSI_RESET }    // 🔵 cyan
+  if (lower.startsWith("hephaestus")) return { emoji: "\uD83D\uDFE0", ansiColor: "\x1b[33m", ansiReset: ANSI_RESET }  // 🟠 orange/yellow
+  if (lower.startsWith("prometheus")) return { emoji: "\uD83D\uDD34", ansiColor: "\x1b[31m", ansiReset: ANSI_RESET }  // 🔴 red
+  if (lower.startsWith("atlas")) return { emoji: "\uD83D\uDFE2", ansiColor: "\x1b[32m", ansiReset: ANSI_RESET }       // 🟢 green
+  if (lower.startsWith("build")) return { emoji: "\uD83D\uDD35", ansiColor: "\x1b[34m", ansiReset: ANSI_RESET }       // 🔵 blue
+  if (lower.startsWith("plan")) return { emoji: "\uD83D\uDFE1", ansiColor: "\x1b[33m", ansiReset: ANSI_RESET }        // 🟡 yellow
   return null
 }
 

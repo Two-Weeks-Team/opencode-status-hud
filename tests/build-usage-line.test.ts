@@ -353,6 +353,36 @@ describe("buildAssistantUsageLine agent theming", () => {
     expect(result).toContain("\x1b[33m")
   })
 
+  it("matches Sisyphus with display name suffix", () => {
+    const result = buildAssistantUsageLine({ ...baseInput, agentName: "Sisyphus (Ultraworker)" })
+    expect(result).toContain("🔵")
+    expect(result).toContain("\x1b[36m")
+  })
+
+  it("matches Hephaestus with display name suffix", () => {
+    const result = buildAssistantUsageLine({ ...baseInput, agentName: "Hephaestus (Deep Agent)" })
+    expect(result).toContain("🟠")
+    expect(result).toContain("\x1b[33m")
+  })
+
+  it("matches Prometheus with display name suffix", () => {
+    const result = buildAssistantUsageLine({ ...baseInput, agentName: "Prometheus (Plan Builder)" })
+    expect(result).toContain("🔴")
+    expect(result).toContain("\x1b[31m")
+  })
+
+  it("matches Atlas with display name suffix", () => {
+    const result = buildAssistantUsageLine({ ...baseInput, agentName: "Atlas (Plan Executor)" })
+    expect(result).toContain("🟢")
+    expect(result).toContain("\x1b[32m")
+  })
+
+  it("matches Sisyphus-Junior display name", () => {
+    const result = buildAssistantUsageLine({ ...baseInput, agentName: "Sisyphus-Junior" })
+    expect(result).toContain("🔵")
+    expect(result).toContain("\x1b[36m")
+  })
+
   it("falls back to model theme for unknown agent", () => {
     const result = buildAssistantUsageLine({ ...baseInput, agentName: "UnknownAgent" })
     expect(result).toContain("🟣")
