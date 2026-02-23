@@ -6,6 +6,9 @@ import { createUsageAggregator, type UsageAggregator, type AggregatorClient } fr
 import { createDiskCache, type DiskCache, type DiskCacheData } from "./disk-cache.js"
 
 import type { ProviderUsageSnapshot } from "./provider-usage.types.js"
+import { resolveAuthToken } from "./auth-resolver.js"
+import { fetchClaudeUsage } from "./fetch-claude.js"
+import { createPollingManager, type PollingManager } from "./polling-manager.js"
 import {
   createInitialCoexistenceState,
   type HudChannelMode,
@@ -87,6 +90,7 @@ interface IntervalHandle {
 
 interface HudPluginRuntimeOptions {
   setIntervalFn?: (callback: () => void, intervalMs: number) => IntervalHandle
+  pollingManagerOverride?: PollingManager | undefined
 }
 
 const DEFAULT_RUNTIME_CONFIG: HudRuntimeConfig = {
@@ -484,13 +488,42 @@ export function createHudPluginHooks(
   const aggregator = createUsageAggregator()
   const diskCache = createDiskCache()
 
+  // Variable to hold cached API snapshot for immediate display
+  let cachedApiSnapshot: ProviderUsageSnapshot | null = null
+
   // Phase 1: Load disk cache immediately (instant strip on restart)
   diskCache.load().then(cached => {
     if (cached) {
       aggregator.fromJSON(cached.samples)
       registry.restore(cached.modelRegistry)
+      if (cached.providerUsage) {
+        cachedApiSnapshot = cached.providerUsage
+      }
     }
   }).catch(() => { /* ignore cache load failure */ })
+
+  // Phase 3: Initialize API polling for real usage data
+  const pollingManager = runtimeOptions.pollingManagerOverride ?? createPollingManager({
+    intervalMs: 60_000,
+    maxBackoffMs: 300_000,
+    authResolver: () => resolveAuthToken(undefined),
+    fetcher: (token) => fetchClaudeUsage({ token }),
+    onSnapshot: (snapshot: ProviderUsageSnapshot) => {
+      // Persist API snapshot alongside existing cache data
+      diskCache.save({
+        version: 2,
+        lastFetchMs: Date.now(),
+        samples: aggregator.toJSON(),
+        modelRegistry: registry.snapshot(),
+        providerUsage: snapshot
+      }).catch(() => { /* ignore cache save failure */ })
+    }
+  })
+
+  // Start polling (non-blocking) if not using override
+  if (!runtimeOptions.pollingManagerOverride) {
+    pollingManager.start()
+  }
 
   // Phase 2: Fetch from local SDK (background, non-blocking)
   if (ctx.client) {
@@ -535,7 +568,7 @@ export function createHudPluginHooks(
           lastFetchMs: Date.now(),
           samples: aggregator.toJSON(),
           modelRegistry: registry.snapshot(),
-          providerUsage: undefined
+          providerUsage: pollingManager.latest() ?? cachedApiSnapshot ?? undefined
         }).catch(() => {})
       }
     }).catch(() => { /* historical load unavailable */ })
@@ -553,7 +586,7 @@ export function createHudPluginHooks(
       lastFetchMs: Date.now(),
       samples: aggregator.toJSON(),
       modelRegistry: registry.snapshot(),
-      providerUsage: undefined
+      providerUsage: pollingManager.latest() ?? cachedApiSnapshot ?? undefined
     }).catch(() => {})
   }
 
@@ -571,7 +604,8 @@ export function createHudPluginHooks(
       contextUsedTokens: input.usage.contextUsedTokens,
       contextLimitTokens: input.usage.contextLimitTokens,
       usageSamples: aggregator.allSamples(),
-      nowMs: input.nowMs
+      nowMs: input.nowMs,
+      apiUsage: pollingManager.latest() ?? cachedApiSnapshot
     })
   }
 
