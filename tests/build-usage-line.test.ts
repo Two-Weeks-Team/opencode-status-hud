@@ -302,7 +302,7 @@ describe("buildAssistantUsageLine model emoji indicators", () => {
       contextLimitTokens: 100000
     })
     expect(result).toContain("\x1b[35m")
-    expect(result).toContain("\x1b[0m")
+    expect(result).toContain("\x1b[39m")
   })
 })
 

@@ -331,10 +331,15 @@ function summarizeModelLabel(modelID: string): string {
 interface ModelTheme {
   emoji: string     // Colored circle emoji
   ansiColor: string // ANSI escape code for color (e.g., "\x1b[35m" for magenta)
-  ansiReset: string // "\x1b[0m"
+  ansiReset: string // "\x1b[39m" — resets foreground only, preserves dim/bold
 }
 
-const ANSI_RESET = "\x1b[0m"
+/**
+ * Using \x1b[0m resets ALL attributes including the outer dim wrapper \x1b[2m,
+ * causing text after the progress bar to appear at full brightness.
+ * \x1b[39m only resets foreground color, preserving the dim attribute.
+ */
+const ANSI_RESET = "\x1b[39m"
 
 function resolveModelTheme(modelID: string): ModelTheme {
   const lower = modelID.toLowerCase()
@@ -359,6 +364,19 @@ function resolveModelTheme(modelID: string): ModelTheme {
   }
   // Default: white circle
   return { emoji: "\u26AA", ansiColor: "\x1b[37m", ansiReset: ANSI_RESET }  // ⚪ white/default
+}
+
+function resolveAgentTheme(agentName: string): ModelTheme | null {
+  const lower = agentName.toLowerCase()
+  // oh-my-opencode agents
+  if (lower === "sisyphus") return { emoji: "\uD83D\uDD35", ansiColor: "\x1b[36m", ansiReset: ANSI_RESET } // 🔵 cyan
+  if (lower === "hephaestus") return { emoji: "\uD83D\uDFE0", ansiColor: "\x1b[33m", ansiReset: ANSI_RESET } // 🟠 orange/yellow
+  if (lower === "prometheus") return { emoji: "\uD83D\uDD34", ansiColor: "\x1b[31m", ansiReset: ANSI_RESET } // 🔴 red
+  if (lower === "atlas") return { emoji: "\uD83D\uDFE2", ansiColor: "\x1b[32m", ansiReset: ANSI_RESET } // 🟢 green
+  // Vanilla opencode agents
+  if (lower === "build") return { emoji: "\uD83D\uDD35", ansiColor: "\x1b[34m", ansiReset: ANSI_RESET } // 🔵 blue
+  if (lower === "plan") return { emoji: "\uD83D\uDFE1", ansiColor: "\x1b[33m", ansiReset: ANSI_RESET } // 🟡 yellow
+  return null // Unknown agent → fall back to model theme
 }
 
 function resolveRuntimeConfig(env: NodeJS.ProcessEnv = process.env): HudRuntimeConfig {
