@@ -297,8 +297,8 @@ function buildProgressBar(percent: number, theme?: ModelTheme | undefined): stri
   const clamped = Math.max(0, Math.min(100, asFiniteNumber(percent)))
   const width = 12
   const filled = Math.max(0, Math.min(width, Math.round((clamped / 100) * width)))
-  const filledStr = "█".repeat(filled)
-  const emptyStr = "░".repeat(width - filled)
+  const filledStr = "#".repeat(filled)
+  const emptyStr = "-".repeat(width - filled)
 
   if (theme) {
     return `${theme.ansiColor}${filledStr}${theme.ansiReset}${emptyStr}`
