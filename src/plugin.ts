@@ -296,25 +296,8 @@ function formatPercent(value: number): string {
 
 
 function summarizeModelLabel(modelID: string): string {
-  const lower = modelID.toLowerCase()
-  if (lower.includes("claude-opus")) {
-    return "Opus"
-  }
-  if (lower.includes("claude-sonnet")) {
-    return "Sonnet"
-  }
-  if (lower.includes("claude-haiku")) {
-    return "Haiku"
-  }
-  if (lower.includes("gpt-5")) {
-    return "GPT-5"
-  }
-  if (lower.includes("gemini")) {
-    return "Gemini"
-  }
-
   const lastSegment = modelID.split("/").at(-1) ?? modelID
-  return truncateLabel(lastSegment, 18)
+  return truncateLabel(lastSegment, 28)
 }
 
 interface ModelTheme {

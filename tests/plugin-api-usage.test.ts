@@ -287,7 +287,7 @@ describe("plugin API usage integration", () => {
 
     expect(output.text).toContain("| 5h:")
     expect(output.text).toContain("| 7d:")
-    expect(output.text).toContain("Opus")
+    expect(output.text).toContain("claude-opus-4")
     expect(output.text).toContain("|")
   })
 
@@ -535,7 +535,7 @@ describe("provider key resolution", () => {
 
     expect(output.text).toContain("5h: ~")
     expect(output.text).toContain("7d: ~")
-    expect(output.text).toContain("GPT-5")
+    expect(output.text).toContain("gpt-5")
   })
 
   it("HUD line uses fallback when provider is unknown", async () => {
