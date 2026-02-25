@@ -544,9 +544,20 @@ export function createHudPluginHooks(
   runtimeConfig: HudRuntimeConfig = resolveRuntimeConfig(),
   runtimeOptions: HudPluginRuntimeOptions = {}
 ): HudPluginHooks {
+  const MAX_SESSION_ENTRIES = 50
   const sessionRuntimes = new Map<string, SessionRuntime>()
   const sessionAgentMap = new Map<string, string>()
   let latestSessionKey: string | null = null
+
+  function pruneMap<V>(map: Map<string, V>): void {
+    if (map.size <= MAX_SESSION_ENTRIES) return
+    const excess = map.size - MAX_SESSION_ENTRIES
+    const iter = map.keys()
+    for (let i = 0; i < excess; i++) {
+      const key = iter.next().value
+      if (key !== undefined) map.delete(key)
+    }
+  }
 
   const registry = createModelRegistry()
   const aggregator = createUsageAggregator()
@@ -801,6 +812,7 @@ export function createHudPluginHooks(
       lastCompletedUsage: null
     }
     sessionRuntimes.set(sessionKey, created)
+    pruneMap(sessionRuntimes)
     return created
   }
 
@@ -971,6 +983,7 @@ export function createHudPluginHooks(
               : undefined
           if (name) {
             sessionAgentMap.set(toSessionKey(input.sessionID), name)
+            pruneMap(sessionAgentMap)
           }
         }
         if (input.model && input.provider) {

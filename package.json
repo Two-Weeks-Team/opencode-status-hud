@@ -1,7 +1,7 @@
 {
   "name": "opencode-status-hud",
   "version": "0.1.0",
-  "description": "Bootstrap package skeleton for OpenCode HUD implementation",
+  "description": "Real-time usage HUD plugin for OpenCode CLI — shows provider API utilization, context tokens, cost, and agent info",
   "type": "module",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",

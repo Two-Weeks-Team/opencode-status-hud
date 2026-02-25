@@ -60,8 +60,8 @@ async function refreshAccessToken(
 
   const data = result.data as Record<string, unknown>
   const accessToken = data.access_token
-  if (typeof accessToken === "string" && accessToken.length > 0) {
-    return accessToken
+  if (typeof accessToken === "string" && accessToken.trim().length > 0) {
+    return accessToken.trim()
   }
 
   return null
