@@ -313,8 +313,7 @@ interface ModelTheme {
  */
 const ANSI_RESET = "\x1b[39m"
 
-const HUD_MARKER = "\u200B"
-const HUD_STRIP_RE = /\n*\x1b\[2m\u200B[^\n]*\x1b\[(?:22|0)m\s*$/
+const HUD_STRIP_RE = /\n*\x1b\[2m[^\n]*\| \d+%[^\n]*\x1b\[(?:22|0)m\s*$/
 
 function resolveModelTheme(modelID: string): ModelTheme {
   const lower = modelID.toLowerCase()
@@ -531,7 +530,7 @@ const ANSI_RE = /\x1b\[[0-9;]*m/g
 
 export function appendUsageLineToOutputText(text: string, usageLine: string): string {
   const plain = usageLine.replace(ANSI_RE, "")
-  const dimLine = `\x1b[2m${HUD_MARKER}${plain}\x1b[22m`
+  const dimLine = `\x1b[2m${plain}\x1b[22m`
   const base = text.replace(HUD_STRIP_RE, "").trimEnd()
   if (base.length === 0) {
     return dimLine
