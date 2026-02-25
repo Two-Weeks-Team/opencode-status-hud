@@ -8,7 +8,7 @@
 
 ## Emission Defaults
 
-- Coexistence mode: `toast-only`
+- Coexistence mode: `prompt+publisher`
 - Coexistence verbosity: `normal`
 - Prompt fallback profile: `minimal`
 - Usage display: `output`

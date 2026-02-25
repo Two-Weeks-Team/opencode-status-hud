@@ -423,7 +423,7 @@ describe("UsageAggregator", () => {
     expect(newAggregator.allSamples()[1]).toEqual(sample2)
   })
 
-  it("fromJSON clears existing samples before loading", () => {
+  it("fromJSON merges samples with existing (upsert behavior)", () => {
     const oldSample = {
       messageID: "old_msg",
       sessionKey: "ses_old",
@@ -446,8 +446,8 @@ describe("UsageAggregator", () => {
     aggregator.fromJSON(newSamples)
 
     const samples = aggregator.allSamples()
-    expect(samples).toHaveLength(1)
-    expect(samples[0]?.messageID).toBe("new_msg")
+    expect(samples).toHaveLength(2)
+    expect(samples.map((s) => s.messageID).sort()).toEqual(["new_msg", "old_msg"])
   })
 
   it("loadHistorical uses since option to filter sessions", async () => {
