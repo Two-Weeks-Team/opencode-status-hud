@@ -293,18 +293,7 @@ function formatPercent(value: number): string {
   return `${clamped}%`
 }
 
-function buildProgressBar(percent: number, theme?: ModelTheme | undefined): string {
-  const clamped = Math.max(0, Math.min(100, asFiniteNumber(percent)))
-  const width = 12
-  const filled = Math.max(0, Math.min(width, Math.round((clamped / 100) * width)))
-  const filledStr = "\u25B0".repeat(filled)
-  const emptyStr = "\u25B1".repeat(width - filled)
 
-  if (theme) {
-    return `${theme.ansiColor}${filledStr}${theme.ansiReset}${emptyStr}`
-  }
-  return `${filledStr}${emptyStr}`
-}
 
 function summarizeModelLabel(modelID: string): string {
   const lower = modelID.toLowerCase()
@@ -537,7 +526,6 @@ export function buildAssistantUsageLine(input: {
 
     return [
       leadSegment,
-      buildProgressBar(contextPercent, theme),
       `${formatPercent(contextPercent)}${warningIndicator}`,
       `${formatCompactTokens(contextUsed)}/${formatCompactTokens(contextLimit)}`,
       formatCostCompact(sessionCost),
@@ -548,7 +536,6 @@ export function buildAssistantUsageLine(input: {
 
   return [
     leadSegment,
-    buildProgressBar(contextPercent, theme),
     `${formatPercent(contextPercent)}${warningIndicator}`,
     `${formatCompactTokens(contextUsed)}/${formatCompactTokens(contextLimit)}`,
     formatCostCompact(sessionCost),

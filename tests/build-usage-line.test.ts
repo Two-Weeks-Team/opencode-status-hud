@@ -289,15 +289,18 @@ describe("buildAssistantUsageLine model color indicators", () => {
     expect(result).toContain("\x1b[35mOpus\x1b[39m")
   })
 
-  it("includes colored progress bar with ANSI codes", () => {
+  it("does not include progress bar characters", () => {
     const result = buildAssistantUsageLine({
       ...baseInput,
       modelID: "claude-opus-4",
       contextUsedTokens: 50000,
       contextLimitTokens: 100000
     })
-    expect(result).toContain("\x1b[35m")
-    expect(result).toContain("\x1b[39m")
+    expect(result).not.toContain("\u25B0")
+    expect(result).not.toContain("\u25B1")
+    expect(result).not.toContain("#")
+    expect(result).toContain("50%")
+    expect(result).toContain("50K/100K")
   })
 })
 
