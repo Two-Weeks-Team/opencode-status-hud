@@ -293,39 +293,11 @@ function formatPercent(value: number): string {
   return `${clamped}%`
 }
 
-function buildProgressBar(percent: number, theme?: ModelTheme | undefined): string {
-  const clamped = Math.max(0, Math.min(100, asFiniteNumber(percent)))
-  const width = 12
-  const filled = Math.max(0, Math.min(width, Math.round((clamped / 100) * width)))
-  const filledStr = "\u25B0".repeat(filled)
-  const emptyStr = "\u25B1".repeat(width - filled)
 
-  if (theme) {
-    return `${theme.ansiColor}${filledStr}${theme.ansiReset}${emptyStr}`
-  }
-  return `${filledStr}${emptyStr}`
-}
 
 function summarizeModelLabel(modelID: string): string {
-  const lower = modelID.toLowerCase()
-  if (lower.includes("claude-opus")) {
-    return "Opus"
-  }
-  if (lower.includes("claude-sonnet")) {
-    return "Sonnet"
-  }
-  if (lower.includes("claude-haiku")) {
-    return "Haiku"
-  }
-  if (lower.includes("gpt-5")) {
-    return "GPT-5"
-  }
-  if (lower.includes("gemini")) {
-    return "Gemini"
-  }
-
   const lastSegment = modelID.split("/").at(-1) ?? modelID
-  return truncateLabel(lastSegment, 18)
+  return truncateLabel(lastSegment, 28)
 }
 
 interface ModelTheme {
@@ -537,7 +509,6 @@ export function buildAssistantUsageLine(input: {
 
     return [
       leadSegment,
-      buildProgressBar(contextPercent, theme),
       `${formatPercent(contextPercent)}${warningIndicator}`,
       `${formatCompactTokens(contextUsed)}/${formatCompactTokens(contextLimit)}`,
       formatCostCompact(sessionCost),
@@ -548,7 +519,6 @@ export function buildAssistantUsageLine(input: {
 
   return [
     leadSegment,
-    buildProgressBar(contextPercent, theme),
     `${formatPercent(contextPercent)}${warningIndicator}`,
     `${formatCompactTokens(contextUsed)}/${formatCompactTokens(contextLimit)}`,
     formatCostCompact(sessionCost),
@@ -1030,12 +1000,20 @@ export function createHudPluginHooks(
       const currentUsage = runtime.usageByMessageID.get(input.messageID) ?? null
       let usage: MessageUsageInfo | null = null
 
-      if (currentUsage !== null && currentUsage.contextUsedTokens > 0) {
-        usage = currentUsage
-      } else if (runtime.lastCompletedUsage !== null) {
-        usage = runtime.lastCompletedUsage
-      } else if (currentUsage !== null) {
-        usage = currentUsage
+      if (currentUsage !== null) {
+        if (currentUsage.contextUsedTokens > 0) {
+          usage = currentUsage
+        } else if (runtime.lastCompletedUsage !== null) {
+          usage = {
+            ...currentUsage,
+            contextUsedTokens: runtime.lastCompletedUsage.contextUsedTokens,
+            contextLimitTokens: runtime.lastCompletedUsage.contextLimitTokens,
+            cost: runtime.lastCompletedUsage.cost,
+            tokens: runtime.lastCompletedUsage.tokens
+          }
+        } else {
+          usage = currentUsage
+        }
       }
 
       if (usage === null) {

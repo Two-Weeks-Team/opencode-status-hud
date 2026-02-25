@@ -291,7 +291,7 @@ describe("OpenCode plugin entrypoint", () => {
     expect(toasts).toHaveLength(0)
     expect(prompts).toHaveLength(0)
     expect(output.text).toContain("assistant result")
-    expect(output.text).toContain("GPT-5")
+    expect(output.text).toContain("gpt-5.3-codex")
     expect(output.text).toContain("| 5h:")
     expect(secondOutput.text).toBe("assistant result second")
   })
@@ -354,7 +354,7 @@ describe("OpenCode plugin entrypoint", () => {
     })
 
     expect(prompts).toHaveLength(1)
-    expect(prompts[0]).toContain("GPT-5")
+    expect(prompts[0]).toContain("gpt-5.3-codex")
     expect(prompts[0]).toContain("| 7d:")
   })
 

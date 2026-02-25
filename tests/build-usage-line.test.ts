@@ -217,36 +217,36 @@ describe("buildAssistantUsageLine model color indicators", () => {
     nowMs: 1000000000000
   }
 
-  it("shows colored Opus model label", () => {
+  it("shows colored full model ID for claude-opus", () => {
     const result = buildAssistantUsageLine({
       ...baseInput,
       modelID: "claude-opus-4-5-20251101"
     })
-    expect(result).toContain("\x1b[35mOpus\x1b[39m")
+    expect(result).toContain("\x1b[35mclaude-opus-4-5-20251101\x1b[39m")
   })
 
-  it("shows colored Sonnet model label", () => {
+  it("shows colored full model ID for claude-sonnet", () => {
     const result = buildAssistantUsageLine({
       ...baseInput,
       modelID: "claude-sonnet-4-5-20251101"
     })
-    expect(result).toContain("\x1b[33mSonnet\x1b[39m")
+    expect(result).toContain("\x1b[33mclaude-sonnet-4-5-20251101\x1b[39m")
   })
 
-  it("shows colored Haiku model label", () => {
+  it("shows colored full model ID for claude-haiku", () => {
     const result = buildAssistantUsageLine({
       ...baseInput,
       modelID: "claude-haiku-4-5-20251101"
     })
-    expect(result).toContain("\x1b[32mHaiku\x1b[39m")
+    expect(result).toContain("\x1b[32mclaude-haiku-4-5-20251101\x1b[39m")
   })
 
-  it("shows colored GPT-5 model label", () => {
+  it("shows colored last-segment model ID for namespaced model", () => {
     const result = buildAssistantUsageLine({
       ...baseInput,
       modelID: "openai/gpt-5.3-codex"
     })
-    expect(result).toContain("\x1b[33mGPT-5\x1b[39m")
+    expect(result).toContain("\x1b[33mgpt-5.3-codex\x1b[39m")
   })
 
   it("shows colored GPT-4 model label", () => {
@@ -257,12 +257,12 @@ describe("buildAssistantUsageLine model color indicators", () => {
     expect(result).toContain("\x1b[33m")
   })
 
-  it("shows colored Gemini model label", () => {
+  it("shows colored last-segment model ID for gemini", () => {
     const result = buildAssistantUsageLine({
       ...baseInput,
       modelID: "google/gemini-1.5-pro"
     })
-    expect(result).toContain("\x1b[36mGemini\x1b[39m")
+    expect(result).toContain("\x1b[36mgemini-1.5-pro\x1b[39m")
   })
 
   it("shows colored DeepSeek model label", () => {
@@ -286,18 +286,21 @@ describe("buildAssistantUsageLine model color indicators", () => {
       ...baseInput,
       modelID: "claude-opus-4"
     })
-    expect(result).toContain("\x1b[35mOpus\x1b[39m")
+    expect(result).toContain("\x1b[35mclaude-opus-4\x1b[39m")
   })
 
-  it("includes colored progress bar with ANSI codes", () => {
+  it("does not include progress bar characters", () => {
     const result = buildAssistantUsageLine({
       ...baseInput,
       modelID: "claude-opus-4",
       contextUsedTokens: 50000,
       contextLimitTokens: 100000
     })
-    expect(result).toContain("\x1b[35m")
-    expect(result).toContain("\x1b[39m")
+    expect(result).not.toContain("\u25B0")
+    expect(result).not.toContain("\u25B1")
+    expect(result).not.toContain("#")
+    expect(result).toContain("50%")
+    expect(result).toContain("50K/100K")
   })
 })
 
@@ -315,7 +318,7 @@ describe("buildAssistantUsageLine agent theming", () => {
   it("shows colored Sisyphus name when agentName provided", () => {
     const result = buildAssistantUsageLine({ ...baseInput, agentName: "Sisyphus" })
     expect(result).toContain("\x1b[36mSisyphus\x1b[39m")
-    expect(result).toContain("Opus")
+    expect(result).toContain("claude-opus-4")
   })
 
   it("shows colored Hephaestus name", () => {
@@ -372,12 +375,12 @@ describe("buildAssistantUsageLine agent theming", () => {
 
   it("falls back to colored model label for unknown agent", () => {
     const result = buildAssistantUsageLine({ ...baseInput, agentName: "UnknownAgent" })
-    expect(result).toContain("\x1b[35mOpus\x1b[39m")
+    expect(result).toContain("\x1b[35mclaude-opus-4\x1b[39m")
   })
 
   it("shows colored model label when no agentName provided", () => {
     const result = buildAssistantUsageLine({ ...baseInput })
-    expect(result).toContain("\x1b[35mOpus\x1b[39m")
+    expect(result).toContain("\x1b[35mclaude-opus-4\x1b[39m")
   })
 })
 
@@ -410,7 +413,7 @@ describe("buildAssistantUsageLine OpenAI provider snapshot", () => {
     expect(result).not.toContain("7d: ~")
   })
 
-  it("shows GPT-5 model label for OpenAI model", () => {
+  it("shows full model ID for OpenAI model", () => {
     const result = buildAssistantUsageLine({
       ...baseInput,
       apiUsage: {
@@ -421,7 +424,7 @@ describe("buildAssistantUsageLine OpenAI provider snapshot", () => {
         ]
       }
     })
-    expect(result).toContain("\x1b[33mGPT-5\x1b[39m")
+    expect(result).toContain("\x1b[33mgpt-5\x1b[39m")
   })
 
   it("uses fallback when OpenAI snapshot has error", () => {
