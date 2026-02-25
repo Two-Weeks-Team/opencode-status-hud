@@ -480,6 +480,16 @@ describe("appendUsageLineToOutputText strip-and-replace", () => {
     expect(result).toContain("HUD")
   })
 
+  it("strips internal ANSI color codes for uniform dim appearance", () => {
+    const colored = "\x1b[36mSisyphus\x1b[39m | \x1b[35mclaude-opus-4\x1b[39m | 14%"
+    const result = appendUsageLineToOutputText("Hello", colored)
+    expect(result).not.toContain("\x1b[36m")
+    expect(result).not.toContain("\x1b[35m")
+    expect(result).not.toContain("\x1b[39m")
+    expect(result).toContain("Sisyphus | claude-opus-4 | 14%")
+    expect(result).toContain("\x1b[2m")
+  })
+
   it("handles multiple rapid appends idempotently", () => {
     let text = "Hello"
     text = appendUsageLineToOutputText(text, "HUD v1")
