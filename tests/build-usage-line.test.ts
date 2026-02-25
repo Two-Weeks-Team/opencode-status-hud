@@ -443,67 +443,65 @@ describe("buildAssistantUsageLine OpenAI provider snapshot", () => {
 })
 
 describe("appendUsageLineToOutputText strip-and-replace", () => {
-  it("wraps usage line with dim codes", () => {
-    const result = appendUsageLineToOutputText("Hello", "Agent | model | 14%")
-    expect(result).toContain("\x1b[2mAgent | model | 14%\x1b[22m")
+  const hudLine = "Agent | model | 14% | 27K/200K | $0.00 | 5h: 5% (3h) | 7d: 21% (Mon)"
+
+  it("outputs plain text without ANSI codes", () => {
+    const result = appendUsageLineToOutputText("Hello", hudLine)
+    expect(result).not.toContain("\x1b[2m")
+    expect(result).not.toContain("\x1b[22m")
+    expect(result).toContain("Agent | model | 14%")
   })
 
   it("appends after double newline", () => {
-    const result = appendUsageLineToOutputText("Hello world", "Agent | model | 5%")
-    expect(result).toBe("Hello world\n\n\x1b[2mAgent | model | 5%\x1b[22m")
+    const result = appendUsageLineToOutputText("Hello world", hudLine)
+    expect(result).toBe(`Hello world\n\n${hudLine}`)
   })
 
-  it("returns dim line alone when text is empty", () => {
-    const result = appendUsageLineToOutputText("", "Agent | model | 0%")
-    expect(result).toBe("\x1b[2mAgent | model | 0%\x1b[22m")
+  it("returns plain line alone when text is empty", () => {
+    const result = appendUsageLineToOutputText("", hudLine)
+    expect(result).toBe(hudLine)
   })
 
   it("strips existing HUD before appending new one", () => {
-    const first = appendUsageLineToOutputText("Hello", "Agent | model | 10% | old")
-    const second = appendUsageLineToOutputText(first, "Agent | model | 20% | new")
-    expect(second).not.toContain("10% | old")
-    expect(second).toContain("20% | new")
-    expect(second).toBe("Hello\n\n\x1b[2mAgent | model | 20% | new\x1b[22m")
+    const oldHud = "Agent | model | 10% | 10K/200K | $0.00 | 5h: 1% (4h) | 7d: 5% (Fri)"
+    const newHud = "Agent | model | 20% | 20K/200K | $0.00 | 5h: 2% (3h) | 7d: 8% (Mon)"
+    const first = appendUsageLineToOutputText("Hello", oldHud)
+    const second = appendUsageLineToOutputText(first, newHud)
+    expect(second).not.toContain("10K/200K")
+    expect(second).toContain("20K/200K")
+    expect(second).toBe(`Hello\n\n${newHud}`)
   })
 
-  it("strips HUD with full reset code", () => {
-    const withReset = "Hello\n\n\x1b[2mOLD | x | 5% | data\x1b[0m"
-    const result = appendUsageLineToOutputText(withReset, "NEW | x | 8% | data")
-    expect(result).not.toContain("5% | data")
-    expect(result).toContain("8% | data")
-  })
-
-  it("does not strip non-HUD dim text", () => {
-    const text = "Response with \x1b[2mthinking\x1b[22m here"
-    const result = appendUsageLineToOutputText(text, "Agent | model | 14%")
+  it("does not strip non-HUD text", () => {
+    const text = "Response with thinking here"
+    const result = appendUsageLineToOutputText(text, hudLine)
     expect(result).toContain("thinking")
     expect(result).toContain("14%")
   })
 
-  it("strips internal ANSI color codes for uniform dim appearance", () => {
-    const colored = "\x1b[36mSisyphus\x1b[39m | \x1b[35mclaude-opus-4\x1b[39m | 14%"
+  it("strips internal ANSI color codes from usage line", () => {
+    const colored = "\x1b[36mSisyphus\x1b[39m | \x1b[35mclaude-opus-4\x1b[39m | 14% | 27K/200K | $0.00 | 5h: 5% (3h) | 7d: 21% (Mon)"
     const result = appendUsageLineToOutputText("Hello", colored)
     expect(result).not.toContain("\x1b[36m")
     expect(result).not.toContain("\x1b[35m")
-    expect(result).not.toContain("\x1b[39m")
     expect(result).toContain("Sisyphus | claude-opus-4 | 14%")
-    expect(result).toContain("\x1b[2m")
   })
 
-  it("does not contain zero-width space marker", () => {
-    const result = appendUsageLineToOutputText("Hello", "Agent | model | 5%")
+  it("does not contain zero-width space", () => {
+    const result = appendUsageLineToOutputText("Hello", hudLine)
     expect(result).not.toContain("\u200B")
   })
 
   it("handles multiple rapid appends idempotently", () => {
+    const h1 = "A | m | 1% | 1K/200K | $0.00 | 5h: 1% (4h) | 7d: 5% (Fri)"
+    const h2 = "A | m | 2% | 2K/200K | $0.00 | 5h: 2% (3h) | 7d: 10% (Mon)"
+    const h3 = "A | m | 3% | 3K/200K | $0.00 | 5h: 3% (2h) | 7d: 15% (Tue)"
     let text = "Hello"
-    text = appendUsageLineToOutputText(text, "Agent | model | 1% | v1")
-    text = appendUsageLineToOutputText(text, "Agent | model | 2% | v2")
-    text = appendUsageLineToOutputText(text, "Agent | model | 3% | v3")
-    const dimCount = (text.match(/\x1b\[2m/g) ?? []).length
-    expect(dimCount).toBe(1)
-    expect(text).toContain("3% | v3")
-    expect(text).not.toContain("1% | v1")
-    expect(text).not.toContain("2% | v2")
+    text = appendUsageLineToOutputText(text, h1)
+    text = appendUsageLineToOutputText(text, h2)
+    text = appendUsageLineToOutputText(text, h3)
+    expect(text).toContain("3%")
+    expect(text).not.toContain("1% | 1K")
+    expect(text).not.toContain("2% | 2K")
   })
 })
