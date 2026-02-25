@@ -777,16 +777,18 @@ export function createHudPluginHooks(
       nextState,
       coexistenceState: runtime.coexistenceState,
       nowMs,
-      promptClient: {
-        tui: {
-          appendPrompt: async (payload) => {
-            await ctx.tuiClient.appendPrompt({
-              directory: ctx.directory,
-              text: payload.content
-            })
+      ...(usageWantsPrompt(runtimeConfig.usageDisplay) ? {
+        promptClient: {
+          tui: {
+            appendPrompt: async (payload) => {
+              await ctx.tuiClient.appendPrompt({
+                directory: ctx.directory,
+                text: payload.content
+              })
+            }
           }
         }
-      },
+      } : {}),
       config: {
         verbosity: runtimeConfig.verbosity,
         promptProfile: runtimeConfig.promptProfile
