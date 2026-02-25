@@ -443,41 +443,41 @@ describe("buildAssistantUsageLine OpenAI provider snapshot", () => {
 })
 
 describe("appendUsageLineToOutputText strip-and-replace", () => {
-  it("wraps usage line with dim and zero-width space marker", () => {
-    const result = appendUsageLineToOutputText("Hello", "HUD line")
-    expect(result).toContain("\x1b[2m\u200BHUD line\x1b[22m")
+  it("wraps usage line with dim codes", () => {
+    const result = appendUsageLineToOutputText("Hello", "Agent | model | 14%")
+    expect(result).toContain("\x1b[2mAgent | model | 14%\x1b[22m")
   })
 
   it("appends after double newline", () => {
-    const result = appendUsageLineToOutputText("Hello world", "HUD")
-    expect(result).toBe("Hello world\n\n\x1b[2m\u200BHUD\x1b[22m")
+    const result = appendUsageLineToOutputText("Hello world", "Agent | model | 5%")
+    expect(result).toBe("Hello world\n\n\x1b[2mAgent | model | 5%\x1b[22m")
   })
 
   it("returns dim line alone when text is empty", () => {
-    const result = appendUsageLineToOutputText("", "HUD")
-    expect(result).toBe("\x1b[2m\u200BHUD\x1b[22m")
+    const result = appendUsageLineToOutputText("", "Agent | model | 0%")
+    expect(result).toBe("\x1b[2mAgent | model | 0%\x1b[22m")
   })
 
   it("strips existing HUD before appending new one", () => {
-    const first = appendUsageLineToOutputText("Hello", "OLD HUD")
-    const second = appendUsageLineToOutputText(first, "NEW HUD")
-    expect(second).not.toContain("OLD HUD")
-    expect(second).toContain("NEW HUD")
-    expect(second).toBe("Hello\n\n\x1b[2m\u200BNEW HUD\x1b[22m")
+    const first = appendUsageLineToOutputText("Hello", "Agent | model | 10% | old")
+    const second = appendUsageLineToOutputText(first, "Agent | model | 20% | new")
+    expect(second).not.toContain("10% | old")
+    expect(second).toContain("20% | new")
+    expect(second).toBe("Hello\n\n\x1b[2mAgent | model | 20% | new\x1b[22m")
   })
 
   it("strips HUD with full reset code", () => {
-    const withReset = "Hello\n\n\x1b[2m\u200BOLD HUD\x1b[0m"
-    const result = appendUsageLineToOutputText(withReset, "NEW HUD")
-    expect(result).not.toContain("OLD HUD")
-    expect(result).toContain("NEW HUD")
+    const withReset = "Hello\n\n\x1b[2mOLD | x | 5% | data\x1b[0m"
+    const result = appendUsageLineToOutputText(withReset, "NEW | x | 8% | data")
+    expect(result).not.toContain("5% | data")
+    expect(result).toContain("8% | data")
   })
 
   it("does not strip non-HUD dim text", () => {
     const text = "Response with \x1b[2mthinking\x1b[22m here"
-    const result = appendUsageLineToOutputText(text, "HUD")
+    const result = appendUsageLineToOutputText(text, "Agent | model | 14%")
     expect(result).toContain("thinking")
-    expect(result).toContain("HUD")
+    expect(result).toContain("14%")
   })
 
   it("strips internal ANSI color codes for uniform dim appearance", () => {
@@ -490,15 +490,20 @@ describe("appendUsageLineToOutputText strip-and-replace", () => {
     expect(result).toContain("\x1b[2m")
   })
 
+  it("does not contain zero-width space marker", () => {
+    const result = appendUsageLineToOutputText("Hello", "Agent | model | 5%")
+    expect(result).not.toContain("\u200B")
+  })
+
   it("handles multiple rapid appends idempotently", () => {
     let text = "Hello"
-    text = appendUsageLineToOutputText(text, "HUD v1")
-    text = appendUsageLineToOutputText(text, "HUD v2")
-    text = appendUsageLineToOutputText(text, "HUD v3")
-    const hudCount = (text.match(/\u200B/g) ?? []).length
-    expect(hudCount).toBe(1)
-    expect(text).toContain("HUD v3")
-    expect(text).not.toContain("HUD v1")
-    expect(text).not.toContain("HUD v2")
+    text = appendUsageLineToOutputText(text, "Agent | model | 1% | v1")
+    text = appendUsageLineToOutputText(text, "Agent | model | 2% | v2")
+    text = appendUsageLineToOutputText(text, "Agent | model | 3% | v3")
+    const dimCount = (text.match(/\x1b\[2m/g) ?? []).length
+    expect(dimCount).toBe(1)
+    expect(text).toContain("3% | v3")
+    expect(text).not.toContain("1% | v1")
+    expect(text).not.toContain("2% | v2")
   })
 })
