@@ -527,8 +527,11 @@ export function buildAssistantUsageLine(input: {
   ].join(" | ")
 }
 
+const ANSI_RE = /\x1b\[[0-9;]*m/g
+
 export function appendUsageLineToOutputText(text: string, usageLine: string): string {
-  const dimLine = `\x1b[2m${HUD_MARKER}${usageLine}\x1b[22m`
+  const plain = usageLine.replace(ANSI_RE, "")
+  const dimLine = `\x1b[2m${HUD_MARKER}${plain}\x1b[22m`
   const base = text.replace(HUD_STRIP_RE, "").trimEnd()
   if (base.length === 0) {
     return dimLine
