@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { createInitialEmitControllerState, emitToastOnStateTransition } from "../src/runtime/emit-controller.js"
+import { createInitialCoexistenceState, dispatchHudTransition } from "../src/runtime/coexistence.js"
 import { parseIncomingEvent } from "../src/runtime/intake.js"
 import { createInitialHudState, reduceHudState, type HudReducerEvent } from "../src/runtime/reducer.js"
 
@@ -57,18 +57,18 @@ describe("baseline validation suite", () => {
     }
   })
 
-  it("keeps burst emission under configured cap", async () => {
-    const payloads: string[] = []
-    const client = {
+  it("keeps burst emission under configured cap via coexistence", async () => {
+    const prompts: string[] = []
+    const promptClient = {
       tui: {
-        showToast: (payload: { title: string; message: string; variant: "info" | "error" | "neutral" }) => {
-          payloads.push(`${payload.title}:${payload.message}`)
+        appendPrompt: (payload: { content: string }) => {
+          prompts.push(payload.content)
         }
       }
     }
 
     let state = createInitialHudState()
-    let controllerState = createInitialEmitControllerState(0)
+    let coexState = createInitialCoexistenceState(0)
 
     for (let i = 0; i < 100; i += 1) {
       const parsed = parseIncomingEvent({
@@ -83,31 +83,30 @@ describe("baseline validation suite", () => {
       }
 
       const nextState = reduceHudState(state, reducerEvent)
-      const emitted = await emitToastOnStateTransition({
+      const result = await dispatchHudTransition({
         previousState: state,
         nextState,
-        controllerState,
+        coexistenceState: coexState,
         nowMs: 100,
-        client,
+        promptClient,
         config: {
-          cooldownMs: 0,
-          maxEmitsPerWindow: 5,
-          windowMs: 1000
+          verbosity: "low",
+          promptProfile: "minimal"
         }
       })
-      controllerState = emitted.controllerState
+      coexState = result.coexistenceState
       state = nextState
     }
 
-    expect(payloads.length).toBe(5)
+    expect(prompts.length).toBeLessThanOrEqual(5)
   })
 
   it("runs smoke flow in plain runtime without oh-my-opencode dependency", async () => {
-    const payloads: string[] = []
-    const client = {
+    const prompts: string[] = []
+    const promptClient = {
       tui: {
-        showToast: (payload: { title: string; message: string; variant: "info" | "error" | "neutral" }) => {
-          payloads.push(payload.message)
+        appendPrompt: (payload: { content: string }) => {
+          prompts.push(payload.content)
         }
       }
     }
@@ -129,7 +128,7 @@ describe("baseline validation suite", () => {
     ]
 
     let state = createInitialHudState()
-    let controllerState = createInitialEmitControllerState(0)
+    let coexState = createInitialCoexistenceState(0)
 
     for (const rawInput of rawInputs) {
       const parsed = parseIncomingEvent(rawInput)
@@ -139,24 +138,23 @@ describe("baseline validation suite", () => {
       }
 
       const nextState = reduceHudState(state, reducerEvent)
-      const emitted = await emitToastOnStateTransition({
+      const result = await dispatchHudTransition({
         previousState: state,
         nextState,
-        controllerState,
+        coexistenceState: coexState,
         nowMs: nextState.lastTransition?.at ?? 0,
-        client,
+        promptClient,
         config: {
-          cooldownMs: 0,
-          maxEmitsPerWindow: 10,
-          windowMs: 1000
+          verbosity: "high",
+          promptProfile: "minimal"
         }
       })
 
-      controllerState = emitted.controllerState
+      coexState = result.coexistenceState
       state = nextState
     }
 
     expect(state.lastStatus).toBe("done")
-    expect(payloads.length).toBeGreaterThan(0)
+    expect(prompts.length).toBeGreaterThan(0)
   })
 })

@@ -4,19 +4,10 @@ import { createInitialCoexistenceState, dispatchHudTransition } from "../src/run
 import { createInitialHudState, reduceHudState } from "../src/runtime/reducer.js"
 
 function createClients() {
-  const toast: string[] = []
   const prompt: string[] = []
 
   return {
-    toast,
     prompt,
-    toastClient: {
-      tui: {
-        showToast: (payload: { title: string; message: string; variant: "info" | "error" | "neutral" }) => {
-          toast.push(`${payload.title}:${payload.message}`)
-        }
-      }
-    },
     promptClient: {
       tui: {
         appendPrompt: (payload: { content: string }) => {
@@ -28,7 +19,7 @@ function createClients() {
 }
 
 describe("coexistence hardening", () => {
-  it("applies configurable channel mode controls", async () => {
+  it("applies configurable verbosity controls", async () => {
     const clients = createClients()
     const base = createInitialHudState()
     const next = reduceHudState(base, {
@@ -38,38 +29,19 @@ describe("coexistence hardening", () => {
       ts: 1000
     })
 
-    const toastOnly = await dispatchHudTransition({
+    const result = await dispatchHudTransition({
       previousState: base,
       nextState: next,
       coexistenceState: createInitialCoexistenceState(0),
       nowMs: 1000,
-      toastClient: clients.toastClient,
       promptClient: clients.promptClient,
       config: {
-        channelMode: "toast-only",
         verbosity: "low",
         promptProfile: "minimal"
       }
     })
 
-    const promptOnly = await dispatchHudTransition({
-      previousState: base,
-      nextState: next,
-      coexistenceState: createInitialCoexistenceState(0),
-      nowMs: 1000,
-      toastClient: clients.toastClient,
-      promptClient: clients.promptClient,
-      config: {
-        channelMode: "prompt-only",
-        verbosity: "low",
-        promptProfile: "minimal"
-      }
-    })
-
-    expect(toastOnly.emitted.toast).toBe(true)
-    expect(toastOnly.emitted.prompt).toBe(false)
-    expect(promptOnly.emitted.toast).toBe(false)
-    expect(promptOnly.emitted.prompt).toBe(true)
+    expect(result.emitted.prompt).toBe(true)
   })
 
   it("remains stable under loader-order variance simulation", async () => {
@@ -97,10 +69,8 @@ describe("coexistence hardening", () => {
             nextState: hudState,
             coexistenceState: aRuntime,
             nowMs: i,
-            toastClient: a.toastClient,
             promptClient: a.promptClient,
             config: {
-              channelMode: "both",
               verbosity: "normal",
               promptProfile: "balanced"
             }
@@ -112,10 +82,8 @@ describe("coexistence hardening", () => {
             nextState: hudState,
             coexistenceState: bRuntime,
             nowMs: i,
-            toastClient: b.toastClient,
             promptClient: b.promptClient,
             config: {
-              channelMode: "both",
               verbosity: "normal",
               promptProfile: "balanced"
             }
@@ -127,10 +95,8 @@ describe("coexistence hardening", () => {
             nextState: hudState,
             coexistenceState: bRuntime,
             nowMs: i,
-            toastClient: b.toastClient,
             promptClient: b.promptClient,
             config: {
-              channelMode: "both",
               verbosity: "normal",
               promptProfile: "balanced"
             }
@@ -142,10 +108,8 @@ describe("coexistence hardening", () => {
             nextState: hudState,
             coexistenceState: aRuntime,
             nowMs: i,
-            toastClient: a.toastClient,
             promptClient: a.promptClient,
             config: {
-              channelMode: "both",
               verbosity: "normal",
               promptProfile: "balanced"
             }
@@ -155,9 +119,7 @@ describe("coexistence hardening", () => {
       }
 
       return {
-        aToast: a.toast.length,
         aPrompt: a.prompt.length,
-        bToast: b.toast.length,
         bPrompt: b.prompt.length
       }
     }
