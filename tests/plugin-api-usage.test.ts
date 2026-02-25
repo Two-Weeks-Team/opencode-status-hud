@@ -634,7 +634,8 @@ describe("provider key resolution", () => {
       output
     )
 
-    expect(output.text).toContain("\x1b[2m")
-    expect(output.text).toContain("\x1b[22m")
+    expect(output.text).not.toContain("\x1b[2m")
+    expect(output.text).not.toContain("\x1b[22m")
+    expect(output.text).toContain("| 0%")
   })
 })
