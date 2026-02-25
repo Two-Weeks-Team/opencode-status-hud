@@ -104,6 +104,10 @@ const ENV_PROMPT_PROFILE = "OPENCODE_STATUS_HUD_PROMPT_PROFILE"
 const ENV_USAGE_DISPLAY = "OPENCODE_STATUS_HUD_USAGE_DISPLAY"
 const ENV_USAGE_PROMPT_INTERVAL_MS = "OPENCODE_STATUS_HUD_USAGE_PROMPT_INTERVAL_MS"
 
+function warnInvalidEnv(envName: string, value: string, validValues: string): void {
+  console.warn(`[opencode-status-hud] Invalid value "${value}" for ${envName}. Valid: ${validValues}. Using default.`)
+}
+
 function toSessionKey(sessionID: string | null | undefined): string {
   return sessionID ?? SESSION_FALLBACK_KEY
 }
@@ -332,10 +336,29 @@ function extractShortAgentName(agentName: string): string {
 }
 
 function resolveRuntimeConfig(env: NodeJS.ProcessEnv = process.env): HudRuntimeConfig {
-  const verbosity = parseVerbosity(env[ENV_VERBOSITY])
-  const promptProfile = parsePromptProfile(env[ENV_PROMPT_PROFILE])
-  const usageDisplay = parseUsageDisplay(env[ENV_USAGE_DISPLAY])
-  const usagePromptIntervalMs = parseUsagePromptIntervalMs(env[ENV_USAGE_PROMPT_INTERVAL_MS])
+  const verbosityRaw = env[ENV_VERBOSITY]
+  const verbosity = parseVerbosity(verbosityRaw)
+  if (verbosityRaw !== undefined && verbosity === null) {
+    warnInvalidEnv(ENV_VERBOSITY, verbosityRaw, "low, normal, high")
+  }
+
+  const promptProfileRaw = env[ENV_PROMPT_PROFILE]
+  const promptProfile = parsePromptProfile(promptProfileRaw)
+  if (promptProfileRaw !== undefined && promptProfile === null) {
+    warnInvalidEnv(ENV_PROMPT_PROFILE, promptProfileRaw, "minimal, balanced, verbose")
+  }
+
+  const usageDisplayRaw = env[ENV_USAGE_DISPLAY]
+  const usageDisplay = parseUsageDisplay(usageDisplayRaw)
+  if (usageDisplayRaw !== undefined && usageDisplay === null) {
+    warnInvalidEnv(ENV_USAGE_DISPLAY, usageDisplayRaw, "output, prompt, output+prompt")
+  }
+
+  const usagePromptIntervalMsRaw = env[ENV_USAGE_PROMPT_INTERVAL_MS]
+  const usagePromptIntervalMs = parseUsagePromptIntervalMs(usagePromptIntervalMsRaw)
+  if (usagePromptIntervalMsRaw !== undefined && usagePromptIntervalMs === null) {
+    warnInvalidEnv(ENV_USAGE_PROMPT_INTERVAL_MS, usagePromptIntervalMsRaw, "0 or >= 1000")
+  }
 
   return {
     verbosity: verbosity ?? DEFAULT_RUNTIME_CONFIG.verbosity,
@@ -494,6 +517,7 @@ export function createHudPluginHooks(
   runtimeConfig: HudRuntimeConfig = resolveRuntimeConfig(),
   runtimeOptions: HudPluginRuntimeOptions = {}
 ): HudPluginHooks {
+  /** Maximum concurrent sessions tracked. Distinct from config.maxStateEntries (reducer history depth). */
   const MAX_SESSION_ENTRIES = 50
   const sessionRuntimes = new Map<string, SessionRuntime>()
   const sessionAgentMap = new Map<string, string>()
@@ -808,85 +832,89 @@ export function createHudPluginHooks(
 
   return {
     event: async (input) => {
-      if (input.event.type !== "message.updated") {
-        return
-      }
-
-      const message = input.event.properties.info
-      if (message.role !== "assistant") {
-        return
-      }
-
-      const nowMs = Date.now()
-      const sessionKey = toSessionKey(message.sessionID)
-      const runtime = getOrCreateSessionRuntime(sessionKey, nowMs)
-      latestSessionKey = sessionKey
-
-      const contextUsedTokens = resolveContextUsedTokens(message.tokens)
-      const contextLimitTokens = Math.max(registry.resolveContextLimit(message.modelID, message.providerID), contextUsedTokens)
-
-      runtime.usageByMessageID.set(message.id, {
-        providerID: message.providerID,
-        modelID: message.modelID,
-        mode: message.mode,
-        cost: message.cost,
-        contextUsedTokens,
-        contextLimitTokens,
-        tokens: {
-          input: asFiniteNumber(message.tokens.input),
-          output: asFiniteNumber(message.tokens.output),
-          reasoning: asFiniteNumber(message.tokens.reasoning),
-          cache: {
-            read: asFiniteNumber(message.tokens.cache.read),
-            write: asFiniteNumber(message.tokens.cache.write)
-          }
+      try {
+        if (input.event.type !== "message.updated") {
+          return
         }
-      })
 
-      if (typeof message.time.completed !== "number") {
-        return
-      }
+        const message = input.event.properties.info
+        if (message.role !== "assistant") {
+          return
+        }
 
-      if (runtime.seenAssistantMessages.has(message.id)) {
-        return
-      }
+        const nowMs = Date.now()
+        const sessionKey = toSessionKey(message.sessionID)
+        const runtime = getOrCreateSessionRuntime(sessionKey, nowMs)
+        latestSessionKey = sessionKey
 
-      runtime.seenAssistantMessages.add(message.id)
+        const contextUsedTokens = resolveContextUsedTokens(message.tokens)
+        const contextLimitTokens = Math.max(registry.resolveContextLimit(message.modelID, message.providerID), contextUsedTokens)
 
-      const completedUsage = runtime.usageByMessageID.get(message.id)
-      if (completedUsage && completedUsage.contextUsedTokens > 0) {
-        runtime.lastCompletedUsage = completedUsage
-      }
-
-      upsertUsageSample({
-        messageID: message.id,
-        sessionKey,
-        completedMs: message.time.completed,
-        contextUsedTokens: asFiniteNumber(message.tokens.input) + asFiniteNumber(message.tokens.output) + asFiniteNumber(message.tokens.reasoning),
-        cost: resolveMessageCost(
-          message.cost,
-          { input: message.tokens.input, output: message.tokens.output, reasoning: message.tokens.reasoning, cache: { read: message.tokens.cache.read, write: message.tokens.cache.write } },
-          registry.get(message.providerID, message.modelID)?.cost ?? null
-        )
-      })
-
-      const usage = completedUsage
-      if (!usage) {
-        return
-      }
-
-      const usageLine = buildUsageLineFromMessageUsage({
-        sessionKey,
-        usage,
-        nowMs
-      })
-      runtime.lastUsagePrompt = usageLine
-
-      if (usageWantsPrompt(runtimeConfig.usageDisplay)) {
-        await ctx.tuiClient.appendPrompt({
-          directory: ctx.directory,
-          text: usageLine
+        runtime.usageByMessageID.set(message.id, {
+          providerID: message.providerID,
+          modelID: message.modelID,
+          mode: message.mode,
+          cost: message.cost,
+          contextUsedTokens,
+          contextLimitTokens,
+          tokens: {
+            input: asFiniteNumber(message.tokens.input),
+            output: asFiniteNumber(message.tokens.output),
+            reasoning: asFiniteNumber(message.tokens.reasoning),
+            cache: {
+              read: asFiniteNumber(message.tokens.cache.read),
+              write: asFiniteNumber(message.tokens.cache.write)
+            }
+          }
         })
+
+        if (typeof message.time.completed !== "number") {
+          return
+        }
+
+        if (runtime.seenAssistantMessages.has(message.id)) {
+          return
+        }
+
+        runtime.seenAssistantMessages.add(message.id)
+
+        const completedUsage = runtime.usageByMessageID.get(message.id)
+        if (completedUsage && completedUsage.contextUsedTokens > 0) {
+          runtime.lastCompletedUsage = completedUsage
+        }
+
+        upsertUsageSample({
+          messageID: message.id,
+          sessionKey,
+          completedMs: message.time.completed,
+          contextUsedTokens: asFiniteNumber(message.tokens.input) + asFiniteNumber(message.tokens.output) + asFiniteNumber(message.tokens.reasoning),
+          cost: resolveMessageCost(
+            message.cost,
+            { input: message.tokens.input, output: message.tokens.output, reasoning: message.tokens.reasoning, cache: { read: message.tokens.cache.read, write: message.tokens.cache.write } },
+            registry.get(message.providerID, message.modelID)?.cost ?? null
+          )
+        })
+
+        const usage = completedUsage
+        if (!usage) {
+          return
+        }
+
+        const usageLine = buildUsageLineFromMessageUsage({
+          sessionKey,
+          usage,
+          nowMs
+        })
+        runtime.lastUsagePrompt = usageLine
+
+        if (usageWantsPrompt(runtimeConfig.usageDisplay)) {
+          await ctx.tuiClient.appendPrompt({
+            directory: ctx.directory,
+            text: usageLine
+          })
+        }
+      } catch {
+        // Plugin hooks must never throw — silently ignore errors
       }
     },
 
@@ -917,91 +945,103 @@ export function createHudPluginHooks(
     },
 
     "experimental.text.complete": async (input, output) => {
-      if (!usageWantsOutput(runtimeConfig.usageDisplay)) {
-        return
-      }
-
-      const nowMs = Date.now()
-      const sessionKey = toSessionKey(input.sessionID)
-      const runtime = getOrCreateSessionRuntime(sessionKey, nowMs)
-
-      if (runtime.outputAugmentedMessages.has(input.messageID)) {
-        return
-      }
-      runtime.outputAugmentedMessages.add(input.messageID)
-
-      const currentUsage = runtime.usageByMessageID.get(input.messageID) ?? null
-      let usage: MessageUsageInfo | null = null
-
-      if (currentUsage !== null) {
-        if (currentUsage.contextUsedTokens > 0) {
-          usage = currentUsage
-        } else if (runtime.lastCompletedUsage !== null) {
-          usage = {
-            ...currentUsage,
-            contextUsedTokens: runtime.lastCompletedUsage.contextUsedTokens,
-            contextLimitTokens: runtime.lastCompletedUsage.contextLimitTokens,
-            cost: runtime.lastCompletedUsage.cost,
-            tokens: runtime.lastCompletedUsage.tokens
-          }
-        } else {
-          usage = currentUsage
+      try {
+        if (!usageWantsOutput(runtimeConfig.usageDisplay)) {
+          return
         }
-      }
 
-      if (usage === null) {
-        return
-      }
+        const nowMs = Date.now()
+        const sessionKey = toSessionKey(input.sessionID)
+        const runtime = getOrCreateSessionRuntime(sessionKey, nowMs)
 
-      const incrementalTokens = asFiniteNumber(usage.tokens.input) + asFiniteNumber(usage.tokens.output) + asFiniteNumber(usage.tokens.reasoning)
-      if (incrementalTokens > 0 || usage.contextUsedTokens > 0) {
-        upsertUsageSample({
-          messageID: input.messageID,
+        if (runtime.outputAugmentedMessages.has(input.messageID)) {
+          return
+        }
+        runtime.outputAugmentedMessages.add(input.messageID)
+
+        const currentUsage = runtime.usageByMessageID.get(input.messageID) ?? null
+        let usage: MessageUsageInfo | null = null
+
+        if (currentUsage !== null) {
+          if (currentUsage.contextUsedTokens > 0) {
+            usage = currentUsage
+          } else if (runtime.lastCompletedUsage !== null) {
+            usage = {
+              ...currentUsage,
+              contextUsedTokens: runtime.lastCompletedUsage.contextUsedTokens,
+              contextLimitTokens: runtime.lastCompletedUsage.contextLimitTokens,
+              cost: runtime.lastCompletedUsage.cost,
+              tokens: runtime.lastCompletedUsage.tokens
+            }
+          } else {
+            usage = currentUsage
+          }
+        }
+
+        if (usage === null) {
+          return
+        }
+
+        const incrementalTokens = asFiniteNumber(usage.tokens.input) + asFiniteNumber(usage.tokens.output) + asFiniteNumber(usage.tokens.reasoning)
+        if (incrementalTokens > 0 || usage.contextUsedTokens > 0) {
+          upsertUsageSample({
+            messageID: input.messageID,
+            sessionKey,
+            completedMs: nowMs,
+            contextUsedTokens: incrementalTokens,
+            cost: resolveMessageCost(
+              usage.cost,
+              usage.tokens,
+              registry.get(usage.providerID, usage.modelID)?.cost ?? null
+            )
+          })
+        }
+
+        const usageLine = buildUsageLineFromMessageUsage({
           sessionKey,
-          completedMs: nowMs,
-          contextUsedTokens: incrementalTokens,
-          cost: resolveMessageCost(
-            usage.cost,
-            usage.tokens,
-            registry.get(usage.providerID, usage.modelID)?.cost ?? null
-          )
+          usage,
+          nowMs
         })
+        output.text = appendUsageLineToOutputText(output.text, usageLine)
+        latestSessionKey = sessionKey
+      } catch {
+        // Plugin hooks must never throw — silently ignore errors
       }
-
-      const usageLine = buildUsageLineFromMessageUsage({
-        sessionKey,
-        usage,
-        nowMs
-      })
-      output.text = appendUsageLineToOutputText(output.text, usageLine)
-      latestSessionKey = sessionKey
     },
 
     "tool.execute.before": async (input) => {
-      const nowMs = Date.now()
-      await dispatchReducerEvent(
-        toSessionKey(input.sessionID),
-        {
-          type: "tool.execute.before",
-          toolName: input.tool,
-          ts: nowMs
-        },
-        nowMs
-      )
+      try {
+        const nowMs = Date.now()
+        await dispatchReducerEvent(
+          toSessionKey(input.sessionID),
+          {
+            type: "tool.execute.before",
+            toolName: input.tool,
+            ts: nowMs
+          },
+          nowMs
+        )
+      } catch {
+        // Plugin hooks must never throw — silently ignore errors
+      }
     },
 
     "tool.execute.after": async (input, output) => {
-      const nowMs = Date.now()
-      await dispatchReducerEvent(
-        toSessionKey(input.sessionID),
-        {
-          type: "tool.execute.after",
-          toolName: input.tool,
-          ok: inferToolResult({ output: output.output, metadata: output.metadata }),
-          ts: nowMs
-        },
-        nowMs
-      )
+      try {
+        const nowMs = Date.now()
+        await dispatchReducerEvent(
+          toSessionKey(input.sessionID),
+          {
+            type: "tool.execute.after",
+            toolName: input.tool,
+            ok: inferToolResult({ output: output.output, metadata: output.metadata }),
+            ts: nowMs
+          },
+          nowMs
+        )
+      } catch {
+        // Plugin hooks must never throw — silently ignore errors
+      }
     }
   }
 }

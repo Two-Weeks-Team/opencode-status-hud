@@ -72,14 +72,14 @@ export function createPollingManager(options: PollingManagerOptions): PollingMan
    * Handles auth resolution, fetching, and error/backoff logic.
    */
   async function tick(): Promise<void> {
-    const token = await options.authResolver()
-
-    // Skip cycle if no token available - don't count as error
-    if (token === null) {
-      return
-    }
-
     try {
+      const token = await options.authResolver()
+
+      // Skip cycle if no token available - don't count as error
+      if (token === null) {
+        return
+      }
+
       const snapshot = await options.fetcher(token)
 
       if (snapshot.error !== undefined) {
@@ -114,6 +114,8 @@ export function createPollingManager(options: PollingManagerOptions): PollingMan
     timerHandle = setTimeoutFn(() => {
       tick().then(() => {
         scheduleNext()
+      }).catch(() => {
+        scheduleNext()  // Ensure polling continues even on error
       })
     }, currentIntervalMs)
 
@@ -131,6 +133,8 @@ export function createPollingManager(options: PollingManagerOptions): PollingMan
 
       // Immediate first fetch, then schedule next
       tick().then(() => {
+        scheduleNext()
+      }).catch(() => {
         scheduleNext()
       })
     },

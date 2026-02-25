@@ -6,6 +6,9 @@ import type { UsageSample } from "./plugin.js"
 import type { ModelRegistryEntry } from "./model-registry.js"
 import type { ProviderUsageSnapshot, ProviderKey } from "./provider-usage.types.js"
 
+// Counter for unique temp file names to prevent collisions during concurrent saves
+let saveCounter = 0
+
 /** v1 schema - kept for migration reference */
 interface DiskCacheDataV1 {
   version: 1
@@ -116,7 +119,7 @@ export function createDiskCache(options?: DiskCacheOptions): DiskCache {
     },
 
     async save(data: DiskCacheData): Promise<void> {
-      const tmpPath = `${cachePath}.${process.pid}.tmp`
+      const tmpPath = `${cachePath}.${process.pid}.${saveCounter++}.tmp`
 
       try {
         await mkdir(dirname(cachePath), { recursive: true })

@@ -78,20 +78,24 @@ export async function dispatchHudTransition(params: {
   let publisherEmitted = false
 
   if (params.promptClient) {
-    const promptResult = await emitPromptOnStateTransition({
-      previousState: params.previousState,
-      nextState: params.nextState,
-      fallbackState: nextRuntimeState.promptState,
-      nowMs: params.nowMs,
-      client: params.promptClient,
-      config: resolvePromptTuning(config.verbosity, config.promptProfile)
-    })
+    try {
+      const promptResult = await emitPromptOnStateTransition({
+        previousState: params.previousState,
+        nextState: params.nextState,
+        fallbackState: nextRuntimeState.promptState,
+        nowMs: params.nowMs,
+        client: params.promptClient,
+        config: resolvePromptTuning(config.verbosity, config.promptProfile)
+      })
 
-    nextRuntimeState = {
-      ...nextRuntimeState,
-      promptState: promptResult.fallbackState
+      nextRuntimeState = {
+        ...nextRuntimeState,
+        promptState: promptResult.fallbackState
+      }
+      promptEmitted = promptResult.emitted
+    } catch {
+      // Prompt client errors must not propagate to plugin hooks
     }
-    promptEmitted = promptResult.emitted
   }
 
   const publisherParams: Parameters<typeof dispatchOptionalPublisher>[0] = {

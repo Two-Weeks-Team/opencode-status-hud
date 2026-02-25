@@ -210,9 +210,8 @@ export function createUsageAggregator(): UsageAggregator {
   }
 
   function fromJSON(data: UsageSample[]): void {
-    samples.length = 0
     for (const sample of data) {
-      samples.push(sample)
+      upsertSample(sample)
     }
   }
 
