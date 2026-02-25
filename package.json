@@ -1,6 +1,6 @@
 {
   "name": "opencode-status-hud",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Real-time usage HUD plugin for OpenCode CLI — shows provider API utilization, context tokens, cost, and agent info",
   "type": "module",
   "main": "dist/src/index.js",
