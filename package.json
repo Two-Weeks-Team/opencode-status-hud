@@ -24,6 +24,11 @@
       "import": "./dist/src/api.js"
     }
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Two-Weeks-Team/opencode-status-hud"
+  },
+  "license": "MIT",
   "engines": {
     "node": ">=22"
   },
