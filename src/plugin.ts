@@ -297,8 +297,8 @@ function buildProgressBar(percent: number, theme?: ModelTheme | undefined): stri
   const clamped = Math.max(0, Math.min(100, asFiniteNumber(percent)))
   const width = 12
   const filled = Math.max(0, Math.min(width, Math.round((clamped / 100) * width)))
-  const filledStr = "#".repeat(filled)
-  const emptyStr = "-".repeat(width - filled)
+  const filledStr = "\u25B0".repeat(filled)
+  const emptyStr = "\u25B1".repeat(width - filled)
 
   if (theme) {
     return `${theme.ansiColor}${filledStr}${theme.ansiReset}${emptyStr}`
@@ -340,6 +340,9 @@ interface ModelTheme {
  * (\x1b[2m), causing text after the progress bar to appear at full brightness.
  */
 const ANSI_RESET = "\x1b[39m"
+
+const HUD_MARKER = "\u200B"
+const HUD_STRIP_RE = /\n*\x1b\[2m\u200B[^\n]*\x1b\[(?:22|0)m\s*$/
 
 function resolveModelTheme(modelID: string): ModelTheme {
   const lower = modelID.toLowerCase()
@@ -554,14 +557,9 @@ export function buildAssistantUsageLine(input: {
   ].join(" | ")
 }
 
-function appendUsageLineToOutputText(text: string, usageLine: string): string {
-  // Check raw content (without dim wrapper)
-  if (text.includes(usageLine)) {
-    return text
-  }
-
-  const dimLine = `\x1b[2m${usageLine}\x1b[22m`
-  const base = text.trimEnd()
+export function appendUsageLineToOutputText(text: string, usageLine: string): string {
+  const dimLine = `\x1b[2m${HUD_MARKER}${usageLine}\x1b[22m`
+  const base = text.replace(HUD_STRIP_RE, "").trimEnd()
   if (base.length === 0) {
     return dimLine
   }
@@ -1027,6 +1025,7 @@ export function createHudPluginHooks(
       if (runtime.outputAugmentedMessages.has(input.messageID)) {
         return
       }
+      runtime.outputAugmentedMessages.add(input.messageID)
 
       const currentUsage = runtime.usageByMessageID.get(input.messageID) ?? null
       let usage: MessageUsageInfo | null = null
@@ -1064,7 +1063,6 @@ export function createHudPluginHooks(
         nowMs
       })
       output.text = appendUsageLineToOutputText(output.text, usageLine)
-      runtime.outputAugmentedMessages.add(input.messageID)
       latestSessionKey = sessionKey
     },
 
