@@ -531,11 +531,12 @@ const ANSI_RE = /\x1b\[[0-9;]*m/g
 export function appendUsageLineToOutputText(text: string, usageLine: string): string {
   const plain = usageLine.replace(ANSI_RE, "")
   const base = text.replace(HUD_STRIP_RE, "").trimEnd()
+  const quoted = `> ${plain}`
   if (base.length === 0) {
-    return plain
+    return quoted
   }
 
-  return `${base}\n\n${plain}`
+  return `${base}\n\n${quoted}`
 }
 
 export function createHudPluginHooks(
