@@ -48,7 +48,6 @@ describe("plugin API usage integration", () => {
   }
 
   const baseRuntimeConfig = {
-    channelMode: "toast-only" as const,
     verbosity: "normal" as const,
     promptProfile: "minimal" as const,
     usageDisplay: "output" as const,
@@ -68,7 +67,6 @@ describe("plugin API usage integration", () => {
       {
         directory: "/tmp/project",
         tuiClient: {
-          showToast: () => undefined,
           appendPrompt: () => undefined
         }
       },
@@ -120,7 +118,6 @@ describe("plugin API usage integration", () => {
       {
         directory: "/tmp/project",
         tuiClient: {
-          showToast: () => undefined,
           appendPrompt: () => undefined
         }
       },
@@ -171,7 +168,6 @@ describe("plugin API usage integration", () => {
       {
         directory: "/tmp/project",
         tuiClient: {
-          showToast: () => undefined,
           appendPrompt: () => undefined
         }
       },
@@ -228,7 +224,6 @@ describe("plugin API usage integration", () => {
       {
         directory: "/tmp/project",
         tuiClient: {
-          showToast: () => undefined,
           appendPrompt: () => undefined
         }
       },
@@ -246,7 +241,6 @@ describe("plugin API usage integration", () => {
       {
         directory: "/tmp/project",
         tuiClient: {
-          showToast: () => undefined,
           appendPrompt: () => undefined
         }
       },
@@ -397,7 +391,6 @@ describe("plugin API usage integration", () => {
       {
         directory: "/tmp/project",
         tuiClient: {
-          showToast: () => undefined,
           appendPrompt: () => undefined
         }
       },
@@ -411,7 +404,6 @@ describe("plugin API usage integration", () => {
 
 describe("provider key resolution", () => {
   const baseRuntimeConfig = {
-    channelMode: "toast-only" as const,
     verbosity: "normal" as const,
     promptProfile: "minimal" as const,
     usageDisplay: "output" as const,
@@ -444,7 +436,6 @@ describe("provider key resolution", () => {
       {
         directory: "/tmp/project",
         tuiClient: {
-          showToast: () => undefined,
           appendPrompt: () => undefined
         }
       },
@@ -494,7 +485,6 @@ describe("provider key resolution", () => {
       {
         directory: "/tmp/project",
         tuiClient: {
-          showToast: () => undefined,
           appendPrompt: () => undefined
         }
       },
@@ -545,7 +535,6 @@ describe("provider key resolution", () => {
       {
         directory: "/tmp/project",
         tuiClient: {
-          showToast: () => undefined,
           appendPrompt: () => undefined
         }
       },
@@ -595,7 +584,6 @@ describe("provider key resolution", () => {
       {
         directory: "/tmp/project",
         tuiClient: {
-          showToast: () => undefined,
           appendPrompt: () => undefined
         }
       },

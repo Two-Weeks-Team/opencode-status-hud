@@ -14,7 +14,6 @@ import { fetchOpenAIUsage } from "./fetch-openai.js"
 import type { ResolvedOpenAIAuthToken } from "./provider-usage.types.js"
 import {
   createInitialCoexistenceState,
-  type HudChannelMode,
   type HudVerbosity,
   type CoexistenceRuntimeState,
   dispatchHudTransition
@@ -25,13 +24,6 @@ import type { HudProfile } from "./config/index.js"
 type HudPluginHooks = Pick<Hooks, "event" | "chat.params" | "tool.execute.before" | "tool.execute.after" | "experimental.text.complete">
 
 interface HudPluginTuiClient {
-  showToast: (parameters?: {
-    directory?: string
-    title?: string
-    message?: string
-    variant?: "info" | "success" | "warning" | "error"
-    duration?: number
-  }) => unknown
   appendPrompt: (parameters?: {
     directory?: string
     text?: string
@@ -77,10 +69,9 @@ export interface UsageSample {
   cost: number
 }
 
-type UsageDisplayMode = "toast" | "prompt" | "output" | "both" | "output+toast" | "all"
+type UsageDisplayMode = "output" | "prompt" | "output+prompt"
 
 interface HudRuntimeConfig {
-  channelMode: HudChannelMode
   verbosity: HudVerbosity
   promptProfile: HudProfile
   usageDisplay: UsageDisplayMode
@@ -97,7 +88,6 @@ interface HudPluginRuntimeOptions {
 }
 
 const DEFAULT_RUNTIME_CONFIG: HudRuntimeConfig = {
-  channelMode: "toast-only",
   verbosity: "normal",
   promptProfile: "minimal",
   usageDisplay: "output",
@@ -109,7 +99,6 @@ const FIVE_HOURS_MS = 5 * 60 * 60 * 1000
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
 
-const ENV_CHANNEL_MODE = "OPENCODE_STATUS_HUD_CHANNEL_MODE"
 const ENV_VERBOSITY = "OPENCODE_STATUS_HUD_VERBOSITY"
 const ENV_PROMPT_PROFILE = "OPENCODE_STATUS_HUD_PROMPT_PROFILE"
 const ENV_USAGE_DISPLAY = "OPENCODE_STATUS_HUD_USAGE_DISPLAY"
@@ -117,14 +106,6 @@ const ENV_USAGE_PROMPT_INTERVAL_MS = "OPENCODE_STATUS_HUD_USAGE_PROMPT_INTERVAL_
 
 function toSessionKey(sessionID: string | null | undefined): string {
   return sessionID ?? SESSION_FALLBACK_KEY
-}
-
-function parseChannelMode(value: string | undefined): HudChannelMode | null {
-  if (value === "toast-only" || value === "prompt-only" || value === "both") {
-    return value
-  }
-
-  return null
 }
 
 function parseVerbosity(value: string | undefined): HudVerbosity | null {
@@ -145,12 +126,9 @@ function parsePromptProfile(value: string | undefined): HudProfile | null {
 
 function parseUsageDisplay(value: string | undefined): UsageDisplayMode | null {
   if (
-    value === "toast" ||
     value === "prompt" ||
     value === "output" ||
-    value === "both" ||
-    value === "output+toast" ||
-    value === "all"
+    value === "output+prompt"
   ) {
     return value
   }
@@ -158,16 +136,12 @@ function parseUsageDisplay(value: string | undefined): UsageDisplayMode | null {
   return null
 }
 
-function usageWantsToast(mode: UsageDisplayMode): boolean {
-  return mode === "toast" || mode === "both" || mode === "output+toast" || mode === "all"
-}
-
 function usageWantsPrompt(mode: UsageDisplayMode): boolean {
-  return mode === "prompt" || mode === "both" || mode === "all"
+  return mode === "prompt" || mode === "output+prompt"
 }
 
 function usageWantsOutput(mode: UsageDisplayMode): boolean {
-  return mode === "output" || mode === "output+toast" || mode === "all"
+  return mode === "output" || mode === "output+prompt"
 }
 
 function parseUsagePromptIntervalMs(value: string | undefined): number | null {
@@ -358,14 +332,12 @@ function extractShortAgentName(agentName: string): string {
 }
 
 function resolveRuntimeConfig(env: NodeJS.ProcessEnv = process.env): HudRuntimeConfig {
-  const channelMode = parseChannelMode(env[ENV_CHANNEL_MODE])
   const verbosity = parseVerbosity(env[ENV_VERBOSITY])
   const promptProfile = parsePromptProfile(env[ENV_PROMPT_PROFILE])
   const usageDisplay = parseUsageDisplay(env[ENV_USAGE_DISPLAY])
   const usagePromptIntervalMs = parseUsagePromptIntervalMs(env[ENV_USAGE_PROMPT_INTERVAL_MS])
 
   return {
-    channelMode: channelMode ?? DEFAULT_RUNTIME_CONFIG.channelMode,
     verbosity: verbosity ?? DEFAULT_RUNTIME_CONFIG.verbosity,
     promptProfile: promptProfile ?? DEFAULT_RUNTIME_CONFIG.promptProfile,
     usageDisplay: usageDisplay ?? DEFAULT_RUNTIME_CONFIG.usageDisplay,
@@ -411,28 +383,6 @@ function formatCost(cost: number): string {
 
 function formatCostCompact(cost: number): string {
   return `$${Math.max(0, asFiniteNumber(cost)).toFixed(2)}`
-}
-
-function buildAssistantUsageToast(input: {
-  modelID: string
-  tokens: {
-    input: number
-    output: number
-    reasoning: number
-  }
-  cost: number
-}): { title: string; message: string; variant: "info" } {
-  const model = truncateLabel(input.modelID, 28)
-  const inputTokens = Math.max(0, Math.trunc(asFiniteNumber(input.tokens.input)))
-  const outputTokens = Math.max(0, Math.trunc(asFiniteNumber(input.tokens.output)))
-  const reasoningTokens = Math.max(0, Math.trunc(asFiniteNumber(input.tokens.reasoning)))
-  const cost = Math.max(0, asFiniteNumber(input.cost))
-
-  return {
-    title: "HUD Usage",
-    message: `${model} in:${inputTokens} out:${outputTokens} rsn:${reasoningTokens} cost:${formatCost(cost)}`,
-    variant: "info"
-  }
 }
 
 export function buildAssistantUsageLine(input: {
@@ -827,19 +777,6 @@ export function createHudPluginHooks(
       nextState,
       coexistenceState: runtime.coexistenceState,
       nowMs,
-      toastClient: {
-        tui: {
-          showToast: async (payload) => {
-            await ctx.tuiClient.showToast({
-              directory: ctx.directory,
-              title: payload.title,
-              message: payload.message,
-              variant: payload.variant === "neutral" ? "info" : payload.variant,
-              duration: 3000
-            })
-          }
-        }
-      },
       promptClient: {
         tui: {
           appendPrompt: async (payload) => {
@@ -851,7 +788,6 @@ export function createHudPluginHooks(
         }
       },
       config: {
-        channelMode: runtimeConfig.channelMode,
         verbosity: runtimeConfig.verbosity,
         promptProfile: runtimeConfig.promptProfile
       }
@@ -943,26 +879,6 @@ export function createHudPluginHooks(
         nowMs
       })
       runtime.lastUsagePrompt = usageLine
-
-      if (usageWantsToast(runtimeConfig.usageDisplay)) {
-        const usageToast = buildAssistantUsageToast({
-          modelID: message.modelID,
-          tokens: {
-            input: message.tokens.input,
-            output: message.tokens.output,
-            reasoning: message.tokens.reasoning
-          },
-          cost: message.cost
-        })
-
-        await ctx.tuiClient.showToast({
-          directory: ctx.directory,
-          title: usageToast.title,
-          message: usageToast.message,
-          variant: usageToast.variant,
-          duration: 6000
-        })
-      }
 
       if (usageWantsPrompt(runtimeConfig.usageDisplay)) {
         await ctx.tuiClient.appendPrompt({
@@ -1093,30 +1009,6 @@ export const OpenCodeStatusHudPlugin: Plugin = async (ctx) => {
     directory: ctx.directory,
     client: ctx.client,
     tuiClient: {
-      showToast: (parameters) => {
-        const body: {
-          title?: string
-          message: string
-          variant: "info" | "success" | "warning" | "error"
-          duration?: number
-        } = {
-          message: parameters?.message ?? "",
-          variant: parameters?.variant ?? "info"
-        }
-        if (parameters?.title !== undefined) {
-          body.title = parameters.title
-        }
-        if (parameters?.duration !== undefined) {
-          body.duration = parameters.duration
-        }
-
-        const query: { directory?: string } = {}
-        if (parameters?.directory !== undefined) {
-          query.directory = parameters.directory
-        }
-
-        return ctx.client.tui.showToast({ body, query })
-      },
       appendPrompt: (parameters) => {
         const body: { text: string } = {
           text: parameters?.text ?? ""

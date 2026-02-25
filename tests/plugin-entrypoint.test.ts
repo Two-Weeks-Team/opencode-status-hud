@@ -5,11 +5,10 @@ import { createHudPluginHooks } from "../src/plugin.js"
 
 const originalDateNow = Date.now
 
-const TOAST_RUNTIME_CONFIG = {
-  channelMode: "toast-only",
+const OUTPUT_RUNTIME_CONFIG = {
   verbosity: "high",
   promptProfile: "minimal",
-  usageDisplay: "toast",
+  usageDisplay: "output",
   usagePromptIntervalMs: 10000
 } as const
 
@@ -23,12 +22,7 @@ describe("OpenCode plugin entrypoint", () => {
   })
 
   it("emits HUD transitions from tool hooks without direct CLI execution", async () => {
-    const toasts: Array<{
-      title: string | undefined
-      message: string | undefined
-      variant: string | undefined
-      directory: string | undefined
-    }> = []
+    const prompts: string[] = []
 
     let clock = 1000
     Date.now = () => {
@@ -40,18 +34,15 @@ describe("OpenCode plugin entrypoint", () => {
       {
         directory: "/tmp/project",
         tuiClient: {
-          showToast: (parameters) => {
-            toasts.push({
-              title: parameters?.title,
-              message: parameters?.message,
-              variant: parameters?.variant,
-              directory: parameters?.directory
-            })
-          },
-          appendPrompt: () => undefined
+          appendPrompt: (parameters) => {
+            prompts.push(parameters?.text ?? "")
+          }
         }
       },
-      TOAST_RUNTIME_CONFIG
+      {
+        ...OUTPUT_RUNTIME_CONFIG,
+        usageDisplay: "prompt"
+      }
     )
 
     await hooks["tool.execute.before"]?.(
@@ -77,27 +68,22 @@ describe("OpenCode plugin entrypoint", () => {
       }
     )
 
-    expect(toasts.length).toBeGreaterThanOrEqual(2)
-    expect(toasts[0]?.directory).toBe("/tmp/project")
+    expect(prompts.length).toBeGreaterThanOrEqual(1)
   })
 
   it("ignores unrelated OpenCode events safely", async () => {
-    const toasts: Array<{ message: string | undefined; variant: string | undefined }> = []
+    const prompts: string[] = []
 
     const hooks = createHudPluginHooks(
       {
         directory: "/tmp/project",
         tuiClient: {
-          showToast: (parameters) => {
-            toasts.push({
-              message: parameters?.message,
-              variant: parameters?.variant
-            })
-          },
-          appendPrompt: () => undefined
+          appendPrompt: (parameters) => {
+            prompts.push(parameters?.text ?? "")
+          }
         }
       },
-      TOAST_RUNTIME_CONFIG
+      OUTPUT_RUNTIME_CONFIG
     )
 
     await hooks.event?.({
@@ -107,107 +93,10 @@ describe("OpenCode plugin entrypoint", () => {
       }
     })
 
-    expect(toasts.length).toBe(0)
-  })
-
-  it("shows assistant usage toast on completed message update", async () => {
-    const toasts: Array<{ title: string | undefined; message: string | undefined; variant: string | undefined }> = []
-
-    const hooks = createHudPluginHooks(
-      {
-        directory: "/tmp/project",
-        tuiClient: {
-          showToast: (parameters) => {
-            toasts.push({
-              title: parameters?.title,
-              message: parameters?.message,
-              variant: parameters?.variant
-            })
-          },
-          appendPrompt: () => undefined
-        }
-      },
-      TOAST_RUNTIME_CONFIG
-    )
-
-    await hooks.event?.({
-      event: {
-        type: "message.updated",
-        properties: {
-          info: {
-            id: "msg_assistant_1",
-            sessionID: "ses_1",
-            role: "assistant",
-            time: {
-              created: 1000,
-              completed: 1200
-            },
-            parentID: "msg_user_1",
-            modelID: "openai/gpt-5.3-codex",
-            providerID: "openai",
-            mode: "primary",
-            path: {
-              cwd: "/tmp/project",
-              root: "/tmp/project"
-            },
-            cost: 0.0123,
-            tokens: {
-              input: 120,
-              output: 42,
-              reasoning: 0,
-              cache: {
-                read: 0,
-                write: 0
-              }
-            }
-          }
-        }
-      }
-    })
-
-    await hooks.event?.({
-      event: {
-        type: "message.updated",
-        properties: {
-          info: {
-            id: "msg_assistant_1",
-            sessionID: "ses_1",
-            role: "assistant",
-            time: {
-              created: 1000,
-              completed: 1200
-            },
-            parentID: "msg_user_1",
-            modelID: "openai/gpt-5.3-codex",
-            providerID: "openai",
-            mode: "primary",
-            path: {
-              cwd: "/tmp/project",
-              root: "/tmp/project"
-            },
-            cost: 0.0123,
-            tokens: {
-              input: 120,
-              output: 42,
-              reasoning: 0,
-              cache: {
-                read: 0,
-                write: 0
-              }
-            }
-          }
-        }
-      }
-    })
-
-    expect(toasts).toHaveLength(1)
-    expect(toasts[0]?.title).toBe("HUD Usage")
-    expect(toasts[0]?.message).toContain("in:120")
-    expect(toasts[0]?.message).toContain("out:42")
+    expect(prompts.length).toBe(0)
   })
 
   it("uses output usage display by default without env overrides", async () => {
-    const toasts: Array<{ title: string | undefined }> = []
     const prompts: string[] = []
     let intervalCallCount = 0
 
@@ -215,9 +104,6 @@ describe("OpenCode plugin entrypoint", () => {
       {
         directory: "/tmp/project",
         tuiClient: {
-          showToast: (parameters) => {
-            toasts.push({ title: parameters?.title })
-          },
           appendPrompt: (parameters) => {
             prompts.push(parameters?.text ?? "")
           }
@@ -288,7 +174,6 @@ describe("OpenCode plugin entrypoint", () => {
     )
 
     expect(intervalCallCount).toBe(0)
-    expect(toasts).toHaveLength(0)
     expect(prompts).toHaveLength(0)
     expect(output.text).toContain("assistant result")
     expect(output.text).toContain("gpt-5.3-codex")
@@ -303,14 +188,12 @@ describe("OpenCode plugin entrypoint", () => {
       {
         directory: "/tmp/project",
         tuiClient: {
-          showToast: () => undefined,
           appendPrompt: (parameters) => {
             prompts.push(parameters?.text ?? "")
           }
         }
       },
       {
-        channelMode: "toast-only",
         verbosity: "high",
         promptProfile: "minimal",
         usageDisplay: "prompt",
@@ -366,14 +249,12 @@ describe("OpenCode plugin entrypoint", () => {
       {
         directory: "/tmp/project",
         tuiClient: {
-          showToast: () => undefined,
           appendPrompt: (parameters) => {
             prompts.push(parameters?.text ?? "")
           }
         }
       },
       {
-        channelMode: "toast-only",
         verbosity: "high",
         promptProfile: "minimal",
         usageDisplay: "prompt",

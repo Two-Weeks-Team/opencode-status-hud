@@ -74,7 +74,7 @@ describe("optional publisher", () => {
   })
 
   it("does not disrupt baseline when publisher sink fails", async () => {
-    const toast: string[] = []
+    const prompt: string[] = []
     const base = createInitialHudState()
     const next = reduceHudState(base, {
       type: "tool.execute.after",
@@ -88,10 +88,10 @@ describe("optional publisher", () => {
       nextState: next,
       coexistenceState: createInitialCoexistenceState(0),
       nowMs: 1100,
-      toastClient: {
+      promptClient: {
         tui: {
-          showToast: (payload) => {
-            toast.push(payload.message)
+          appendPrompt: (payload) => {
+            prompt.push(payload.content)
           }
         }
       },
@@ -107,14 +107,13 @@ describe("optional publisher", () => {
         windowMs: 1000
       },
       config: {
-        channelMode: "toast-only",
         verbosity: "normal",
         promptProfile: "minimal"
       }
     })
 
     expect(result.emitted.publisher).toBe(false)
-    expect(result.emitted.toast).toBe(true)
-    expect(toast.length).toBe(1)
+    expect(result.emitted.prompt).toBe(true)
+    expect(prompt.length).toBe(1)
   })
 })

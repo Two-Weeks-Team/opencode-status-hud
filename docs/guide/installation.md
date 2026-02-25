@@ -58,22 +58,21 @@ HUD defaults to appending usage text to the assistant output message body, so no
 opencode
 ```
 
-Default output strip example:
+Default output example (appended as blockquote):
 
 ```text
-BOT Opus | ######...... | 65% | 131K/200K | $87.41 | 5h:6% (3h 53m) | 7d:75%
+> Sisyphus | claude-opus-4-6 | 0% | 0/200K | $0.00 | 5h: 10% (3h 55m) | 7d: 24% (Mon 14:00)
 ```
 
-Prompt mode is still available, but it writes into the prompt area.
+Prompt mode is also available — it writes into the prompt input area.
 
 Use env values only when you want to override defaults.
 
 Supported runtime env values:
 
-- `OPENCODE_STATUS_HUD_CHANNEL_MODE`: `toast-only` | `prompt-only` | `both`
 - `OPENCODE_STATUS_HUD_VERBOSITY`: `low` | `normal` | `high`
 - `OPENCODE_STATUS_HUD_PROMPT_PROFILE`: `minimal` | `balanced` | `verbose`
-- `OPENCODE_STATUS_HUD_USAGE_DISPLAY`: `output` (default) | `toast` | `prompt` | `both` (toast+prompt) | `output+toast` | `all`
+- `OPENCODE_STATUS_HUD_USAGE_DISPLAY`: `output` (default) | `prompt` | `output+prompt`
 - `OPENCODE_STATUS_HUD_USAGE_PROMPT_INTERVAL_MS`: `0` (disable) or `>=1000` (default: `10000`)
 
 ### Legacy mode (config array)
