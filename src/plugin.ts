@@ -1017,12 +1017,20 @@ export function createHudPluginHooks(
       const currentUsage = runtime.usageByMessageID.get(input.messageID) ?? null
       let usage: MessageUsageInfo | null = null
 
-      if (currentUsage !== null && currentUsage.contextUsedTokens > 0) {
-        usage = currentUsage
-      } else if (runtime.lastCompletedUsage !== null) {
-        usage = runtime.lastCompletedUsage
-      } else if (currentUsage !== null) {
-        usage = currentUsage
+      if (currentUsage !== null) {
+        if (currentUsage.contextUsedTokens > 0) {
+          usage = currentUsage
+        } else if (runtime.lastCompletedUsage !== null) {
+          usage = {
+            ...currentUsage,
+            contextUsedTokens: runtime.lastCompletedUsage.contextUsedTokens,
+            contextLimitTokens: runtime.lastCompletedUsage.contextLimitTokens,
+            cost: runtime.lastCompletedUsage.cost,
+            tokens: runtime.lastCompletedUsage.tokens
+          }
+        } else {
+          usage = currentUsage
+        }
       }
 
       if (usage === null) {
