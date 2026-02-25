@@ -8,6 +8,10 @@
 
 Every assistant response shows your live usage at a glance:
 
+<p align="center">
+  <img src="docs/screenshots/hud-multi-agent.png" alt="HUD running across multiple agents and providers" width="800" />
+</p>
+
 ```text
 > Sisyphus | claude-opus-4-6 | 42% | 85K/200K | $12.30 | 5h: 10% (3h 55m) | 7d: 24% (Mon 14:00)
 ```
