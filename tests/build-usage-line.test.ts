@@ -454,12 +454,12 @@ describe("appendUsageLineToOutputText strip-and-replace", () => {
 
   it("appends after double newline", () => {
     const result = appendUsageLineToOutputText("Hello world", hudLine)
-    expect(result).toBe(`Hello world\n\n${hudLine}`)
+    expect(result).toBe(`Hello world\n\n> ${hudLine}`)
   })
 
   it("returns plain line alone when text is empty", () => {
     const result = appendUsageLineToOutputText("", hudLine)
-    expect(result).toBe(hudLine)
+    expect(result).toBe(`> ${hudLine}`)
   })
 
   it("strips existing HUD before appending new one", () => {
@@ -469,7 +469,7 @@ describe("appendUsageLineToOutputText strip-and-replace", () => {
     const second = appendUsageLineToOutputText(first, newHud)
     expect(second).not.toContain("10K/200K")
     expect(second).toContain("20K/200K")
-    expect(second).toBe(`Hello\n\n${newHud}`)
+    expect(second).toBe(`Hello\n\n> ${newHud}`)
   })
 
   it("does not strip non-HUD text", () => {
