@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { buildAssistantUsageLine } from "../src/plugin.js"
+import { buildAssistantUsageLine, appendUsageLineToOutputText } from "../src/plugin.js"
 
 describe("buildAssistantUsageLine API usage", () => {
   const baseInput = {
@@ -439,11 +439,53 @@ describe("buildAssistantUsageLine OpenAI provider snapshot", () => {
   })
 })
 
-describe("appendUsageLineToOutputText dim text wrapper", () => {
-  it("adds dim ANSI codes to usage line", () => {
-    const dimOn = "\x1b[2m"
-    const dimOff = "\x1b[22m"
-    expect(dimOn).toBe("\x1b[2m")
-    expect(dimOff).toBe("\x1b[22m")
+describe("appendUsageLineToOutputText strip-and-replace", () => {
+  it("wraps usage line with dim and zero-width space marker", () => {
+    const result = appendUsageLineToOutputText("Hello", "HUD line")
+    expect(result).toContain("\x1b[2m\u200BHUD line\x1b[22m")
+  })
+
+  it("appends after double newline", () => {
+    const result = appendUsageLineToOutputText("Hello world", "HUD")
+    expect(result).toBe("Hello world\n\n\x1b[2m\u200BHUD\x1b[22m")
+  })
+
+  it("returns dim line alone when text is empty", () => {
+    const result = appendUsageLineToOutputText("", "HUD")
+    expect(result).toBe("\x1b[2m\u200BHUD\x1b[22m")
+  })
+
+  it("strips existing HUD before appending new one", () => {
+    const first = appendUsageLineToOutputText("Hello", "OLD HUD")
+    const second = appendUsageLineToOutputText(first, "NEW HUD")
+    expect(second).not.toContain("OLD HUD")
+    expect(second).toContain("NEW HUD")
+    expect(second).toBe("Hello\n\n\x1b[2m\u200BNEW HUD\x1b[22m")
+  })
+
+  it("strips HUD with full reset code", () => {
+    const withReset = "Hello\n\n\x1b[2m\u200BOLD HUD\x1b[0m"
+    const result = appendUsageLineToOutputText(withReset, "NEW HUD")
+    expect(result).not.toContain("OLD HUD")
+    expect(result).toContain("NEW HUD")
+  })
+
+  it("does not strip non-HUD dim text", () => {
+    const text = "Response with \x1b[2mthinking\x1b[22m here"
+    const result = appendUsageLineToOutputText(text, "HUD")
+    expect(result).toContain("thinking")
+    expect(result).toContain("HUD")
+  })
+
+  it("handles multiple rapid appends idempotently", () => {
+    let text = "Hello"
+    text = appendUsageLineToOutputText(text, "HUD v1")
+    text = appendUsageLineToOutputText(text, "HUD v2")
+    text = appendUsageLineToOutputText(text, "HUD v3")
+    const hudCount = (text.match(/\u200B/g) ?? []).length
+    expect(hudCount).toBe(1)
+    expect(text).toContain("HUD v3")
+    expect(text).not.toContain("HUD v1")
+    expect(text).not.toContain("HUD v2")
   })
 })
