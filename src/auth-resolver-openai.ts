@@ -16,6 +16,7 @@ import { readFile } from "node:fs/promises"
 import { join } from "node:path"
 import { homedir } from "node:os"
 import type { ResolvedOpenAIAuthToken } from "./provider-usage.types.js"
+import { readOpenCodeAuth } from "./opencode-auth.js"
 
 export interface ReadFileFn {
   (path: string, encoding: BufferEncoding): Promise<string>
@@ -109,6 +110,29 @@ export async function resolveOpenAIAuthToken(
   options?: OpenAIAuthResolverOptions
 ): Promise<ResolvedOpenAIAuthToken | null> {
   const opts: OpenAIAuthResolverOptions = options ?? {}
+
+  const ocEntry = await readOpenCodeAuth("openai", {
+    readFileFn: opts.readFileFn,
+    env: opts.env ?? undefined,
+  })
+  if (ocEntry !== null) {
+    if (ocEntry.type === "oauth" && typeof ocEntry.access === "string" && ocEntry.access.length > 0) {
+      return {
+        accessToken: ocEntry.access,
+        accountId: typeof ocEntry.accountId === "string" ? ocEntry.accountId : undefined,
+        refreshToken: typeof ocEntry.refresh === "string" ? ocEntry.refresh : undefined,
+        source: "opencode-auth",
+        kind: "jwt",
+      }
+    }
+    if (ocEntry.type === "api" && typeof ocEntry.key === "string" && ocEntry.key.length > 0) {
+      return {
+        accessToken: ocEntry.key,
+        source: "opencode-auth",
+        kind: "api-key",
+      }
+    }
+  }
 
   return resolveFromAuthJson(opts)
 }

@@ -400,6 +400,116 @@ describe("plugin API usage integration", () => {
 
     expect(mockPollingManager.start).not.toHaveBeenCalled()
   })
+
+  it("chat.params triggers forceRefresh when provider changes", async () => {
+    const forceRefreshSpy = vi.fn(async () => null)
+    const mockPollingManager: PollingManager = {
+      start: vi.fn(),
+      stop: vi.fn(),
+      latest: vi.fn(() => null),
+      forceRefresh: forceRefreshSpy,
+      isRunning: vi.fn(() => false)
+    }
+
+    const hooks = createHudPluginHooks(
+      {
+        directory: "/tmp/project",
+        tuiClient: {
+          appendPrompt: () => undefined
+        }
+      },
+      baseRuntimeConfig,
+      { pollingManagerOverride: mockPollingManager }
+    )
+
+    const chatParamsOutput = { temperature: 1, topP: 1, topK: 0, options: {} }
+
+    await hooks["chat.params"]?.({
+      sessionID: "ses_switch",
+      agent: "Sisyphus",
+      model: {
+        id: "claude-opus-4",
+        cost: { input: 0.000015, output: 0.000075, cache: { read: 0, write: 0 } },
+        limit: { context: 200000, output: 16384 }
+      },
+      provider: { id: "anthropic" }
+    } as never, chatParamsOutput as never)
+
+    await vi.waitFor(() => {
+      expect(forceRefreshSpy).toHaveBeenCalledTimes(1)
+    })
+
+    forceRefreshSpy.mockClear()
+
+    await hooks["chat.params"]?.({
+      sessionID: "ses_switch",
+      agent: "Sisyphus",
+      model: {
+        id: "claude-opus-4",
+        cost: { input: 0.000015, output: 0.000075, cache: { read: 0, write: 0 } },
+        limit: { context: 200000, output: 16384 }
+      },
+      provider: { id: "anthropic" }
+    } as never, chatParamsOutput as never)
+
+    expect(forceRefreshSpy).not.toHaveBeenCalled()
+  })
+
+  it("chat.params triggers forceRefresh when model changes within same provider", async () => {
+    const forceRefreshSpy = vi.fn(async () => null)
+    const mockPollingManager: PollingManager = {
+      start: vi.fn(),
+      stop: vi.fn(),
+      latest: vi.fn(() => null),
+      forceRefresh: forceRefreshSpy,
+      isRunning: vi.fn(() => false)
+    }
+
+    const hooks = createHudPluginHooks(
+      {
+        directory: "/tmp/project",
+        tuiClient: {
+          appendPrompt: () => undefined
+        }
+      },
+      baseRuntimeConfig,
+      { pollingManagerOverride: mockPollingManager }
+    )
+
+    const chatParamsOutput = { temperature: 1, topP: 1, topK: 0, options: {} }
+
+    await hooks["chat.params"]?.({
+      sessionID: "ses_model_switch",
+      agent: "Sisyphus",
+      model: {
+        id: "claude-opus-4",
+        cost: { input: 0.000015, output: 0.000075, cache: { read: 0, write: 0 } },
+        limit: { context: 200000, output: 16384 }
+      },
+      provider: { id: "anthropic" }
+    } as never, chatParamsOutput as never)
+
+    await vi.waitFor(() => {
+      expect(forceRefreshSpy).toHaveBeenCalledTimes(1)
+    })
+
+    forceRefreshSpy.mockClear()
+
+    await hooks["chat.params"]?.({
+      sessionID: "ses_model_switch",
+      agent: "Sisyphus",
+      model: {
+        id: "claude-sonnet-4",
+        cost: { input: 0.000003, output: 0.000015, cache: { read: 0, write: 0 } },
+        limit: { context: 200000, output: 16384 }
+      },
+      provider: { id: "anthropic" }
+    } as never, chatParamsOutput as never)
+
+    await vi.waitFor(() => {
+      expect(forceRefreshSpy).toHaveBeenCalledTimes(1)
+    })
+  })
 })
 
 describe("provider key resolution", () => {
@@ -575,6 +685,122 @@ describe("provider key resolution", () => {
 
     expect(output.text).toContain("5h: ~")
     expect(output.text).toContain("7d: ~")
+  })
+
+  it("HUD line does not reuse Anthropic snapshot for non-Anthropic provider with Claude model", async () => {
+    const snapshot: ProviderUsageSnapshot = {
+      provider: "anthropic",
+      fetchedAtMs: Date.now(),
+      windows: [
+        { label: "5h", usedPercent: 61, resetAtMs: Date.now() + 4 * 60 * 60 * 1000 },
+        { label: "7d", usedPercent: 22, resetAtMs: Date.now() + 3 * 24 * 60 * 60 * 1000 }
+      ]
+    }
+    const mockPollingManager = createMockPollingManager(snapshot)
+
+    const hooks = createHudPluginHooks(
+      {
+        directory: "/tmp/project",
+        tuiClient: {
+          appendPrompt: () => undefined
+        }
+      },
+      baseRuntimeConfig,
+      { pollingManagerOverride: mockPollingManager }
+    )
+
+    await hooks.event?.({
+      event: {
+        type: "message.updated",
+        properties: {
+          info: {
+            id: "msg_non_anthropic_claude",
+            sessionID: "ses_non_anthropic_claude",
+            role: "assistant",
+            time: { created: 1000, completed: 1200 },
+            parentID: "msg_user_1",
+            modelID: "claude-opus-4",
+            providerID: "openrouter",
+            mode: "primary",
+            path: { cwd: "/tmp/project", root: "/tmp/project" },
+            cost: 0.01,
+            tokens: { input: 100, output: 50, reasoning: 0, cache: { read: 0, write: 0 } }
+          }
+        }
+      }
+    })
+
+    const output = { text: "assistant result" }
+    await hooks["experimental.text.complete"]?.(
+      {
+        sessionID: "ses_non_anthropic_claude",
+        messageID: "msg_non_anthropic_claude",
+        partID: "part_1"
+      },
+      output
+    )
+
+    expect(output.text).toContain("5h: ~")
+    expect(output.text).toContain("7d: ~")
+    expect(output.text).not.toContain("5h: 61%")
+    expect(output.text).not.toContain("7d: 22%")
+  })
+
+  it("HUD line can still infer Anthropic when providerID is empty", async () => {
+    const snapshot: ProviderUsageSnapshot = {
+      provider: "anthropic",
+      fetchedAtMs: Date.now(),
+      windows: [
+        { label: "5h", usedPercent: 48, resetAtMs: Date.now() + 4 * 60 * 60 * 1000 },
+        { label: "7d", usedPercent: 18, resetAtMs: Date.now() + 3 * 24 * 60 * 60 * 1000 }
+      ]
+    }
+    const mockPollingManager = createMockPollingManager(snapshot)
+
+    const hooks = createHudPluginHooks(
+      {
+        directory: "/tmp/project",
+        tuiClient: {
+          appendPrompt: () => undefined
+        }
+      },
+      baseRuntimeConfig,
+      { pollingManagerOverride: mockPollingManager }
+    )
+
+    await hooks.event?.({
+      event: {
+        type: "message.updated",
+        properties: {
+          info: {
+            id: "msg_empty_provider_claude",
+            sessionID: "ses_empty_provider_claude",
+            role: "assistant",
+            time: { created: 1000, completed: 1200 },
+            parentID: "msg_user_1",
+            modelID: "claude-sonnet-4",
+            providerID: "",
+            mode: "primary",
+            path: { cwd: "/tmp/project", root: "/tmp/project" },
+            cost: 0.01,
+            tokens: { input: 100, output: 50, reasoning: 0, cache: { read: 0, write: 0 } }
+          }
+        }
+      }
+    })
+
+    const output = { text: "assistant result" }
+    await hooks["experimental.text.complete"]?.(
+      {
+        sessionID: "ses_empty_provider_claude",
+        messageID: "msg_empty_provider_claude",
+        partID: "part_1"
+      },
+      output
+    )
+
+    expect(output.text).toContain("5h: 48%")
+    expect(output.text).toContain("7d: 18%")
   })
 
   it("output text includes dim ANSI codes", async () => {

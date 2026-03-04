@@ -19,6 +19,7 @@ import { join } from "node:path"
 import { homedir } from "node:os"
 import { promisify } from "node:util"
 import type { ResolvedAuthToken, AuthTokenSource } from "./provider-usage.types.js"
+import { readOpenCodeAuth } from "./opencode-auth.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -206,7 +207,20 @@ export async function resolveAuthToken(
 ): Promise<ResolvedAuthToken | null> {
   const opts: AuthResolverOptions = options ?? {}
 
-  // Priority 1: macOS Keychain
+  const ocEntry = await readOpenCodeAuth("anthropic", {
+    readFileFn: opts.readFileFn,
+    env: opts.env ?? undefined,
+    platform: opts.platform ?? undefined,
+  })
+  if (ocEntry !== null) {
+    if (ocEntry.type === "oauth" && typeof ocEntry.access === "string" && ocEntry.access.length > 0) {
+      return { token: ocEntry.access, source: "opencode-auth", kind: "oauth" }
+    }
+    if (ocEntry.type === "api" && typeof ocEntry.key === "string" && ocEntry.key.length > 0) {
+      return { token: ocEntry.key, source: "opencode-auth", kind: "oauth" }
+    }
+  }
+
   const keychainResult = await resolveFromKeychain(opts)
   if (keychainResult !== null) {
     return {

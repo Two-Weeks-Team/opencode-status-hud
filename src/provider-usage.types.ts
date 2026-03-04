@@ -47,6 +47,7 @@ export interface ProviderUsageSnapshot {
 
 /** Where the auth token was found */
 export type AuthTokenSource =
+  | "opencode-auth"
   | "keychain"
   | "credentials-file"
   | "env-oauth"
@@ -177,7 +178,7 @@ export interface OpenAIRateWindow {
 }
 
 /** Where the OpenAI auth token was found */
-export type OpenAIAuthTokenSource = "codex-auth-file" | "env-openai-key"
+export type OpenAIAuthTokenSource = "opencode-auth" | "codex-auth-file" | "env-openai-key"
 
 /** Resolved OpenAI auth token with metadata */
 export interface ResolvedOpenAIAuthToken {

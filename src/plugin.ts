@@ -170,16 +170,27 @@ function parseUsagePromptIntervalMs(value: string | undefined): number | null {
  * Returns null if provider is unknown or doesn't have a usage API.
  */
 function resolveProviderKey(providerID: string, modelID: string): ProviderKey | null {
-  const lowerProvider = providerID.toLowerCase()
+  const lowerProvider = providerID.trim().toLowerCase()
+
+  if (lowerProvider.length > 0) {
+    if (lowerProvider.includes("anthropic")) {
+      return "anthropic"
+    }
+
+    if (lowerProvider.includes("openai")) {
+      return "openai"
+    }
+
+    return null
+  }
+
   const lowerModel = modelID.toLowerCase()
 
-  // Anthropic models
-  if (lowerProvider.includes("anthropic") || lowerModel.includes("claude") || lowerModel.includes("opus") || lowerModel.includes("sonnet") || lowerModel.includes("haiku")) {
+  if (lowerModel.includes("claude") || lowerModel.includes("opus") || lowerModel.includes("sonnet") || lowerModel.includes("haiku")) {
     return "anthropic"
   }
 
-  // OpenAI models
-  if (lowerProvider.includes("openai") || lowerModel.includes("gpt") || lowerModel.includes("codex") || lowerModel.includes("o1") || lowerModel.includes("o3") || lowerModel.includes("o4")) {
+  if (lowerModel.includes("gpt") || lowerModel.includes("codex") || lowerModel.includes("o1") || lowerModel.includes("o3") || lowerModel.includes("o4")) {
     return "openai"
   }
 
@@ -522,6 +533,8 @@ export function createHudPluginHooks(
   const sessionRuntimes = new Map<string, SessionRuntime>()
   const sessionAgentMap = new Map<string, string>()
   let latestSessionKey: string | null = null
+  let lastSeenProviderID: string | null = null
+  let lastSeenModelID: string | null = null
 
   function pruneMap<V>(map: Map<string, V>): void {
     if (map.size <= MAX_SESSION_ENTRIES) return
@@ -938,10 +951,25 @@ export function createHudPluginHooks(
           if (model.id && model.cost && model.limit) {
             registry.updateFromChatParams(model, provider)
           }
+
+          const incomingProviderID = provider.id ?? provider.info?.id ?? ""
+          const incomingModelID = model.id ?? ""
+          const providerChanged = incomingProviderID !== lastSeenProviderID
+          const modelChanged = incomingModelID !== lastSeenModelID
+
+          if (providerChanged || modelChanged) {
+            lastSeenProviderID = incomingProviderID
+            lastSeenModelID = incomingModelID
+
+            const providerKey = resolveProviderKey(incomingProviderID, incomingModelID)
+            if (providerKey === "anthropic") {
+              void anthropicPoller.forceRefresh()
+            } else if (providerKey === "openai") {
+              void openaiPoller.forceRefresh()
+            }
+          }
         }
-      } catch {
-        // Silently ignore chat.params errors — registry is best-effort
-      }
+      } catch { }
     },
 
     "experimental.text.complete": async (input, output) => {
